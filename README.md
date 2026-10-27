@@ -34,6 +34,9 @@ finas, o nome de cada grupo escrito na margem e quase nenhuma caixa ou sombra.
   A cor do círculo indica a prioridade; meio preenchido quer dizer "em andamento".
 - **Quadro**: colunas Pendente, Em andamento e Feita; arrastar muda a situação da tarefa.
 - **Ficha da tarefa** ao lado, para editar tudo; marcar como feita e excluir têm **Desfazer**.
+- **Tipografia com hierarquia clara**: títulos das tarefas em caixa alta, pretos e em negrito
+  (Archivo), descrições em texto corrido (Instrument Sans) e etiquetas e prazos menores.
+  **PRIORIDADE ALTA** aparece em vermelho com um brilho leve de neon.
 - O cabeçalho resume o dia numa frase ("Uma tarefa atrasada e duas para hoje."), há tema claro
   e escuro, atalhos de teclado (`?`) e layout para celular.
 

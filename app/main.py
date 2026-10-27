@@ -21,7 +21,7 @@ from app.routers import auth, tasks
 from app.security import hash_password
 from app.seed import DEMO_EMAIL, DEMO_PASSWORD, seed_demo
 
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 STATIC_DIR = Path(__file__).parent / "static"
 
 DESCRIPTION = """

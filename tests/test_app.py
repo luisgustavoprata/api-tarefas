@@ -6,7 +6,7 @@ from app.seed import DEMO_EMAIL, DEMO_PASSWORD
 
 
 def test_health(client):
-    assert client.get("/health").json() == {"status": "ok", "version": "1.3.0"}
+    assert client.get("/health").json() == {"status": "ok", "version": "1.4.0"}
 
 
 def test_home_serves_the_web_interface(client):

@@ -778,14 +778,14 @@ function boardNote(task) {
   const done = task.status === "concluida";
   const due = dueLabel(task.due_date, done);
   const meta = metaLine(task, { status: false });
-  if (due && meta) meta.prepend(h("span", { class: due.kind === "late" ? "hi" : null }, due.text.toLowerCase()));
+  if (due && meta) meta.prepend(h("span", { class: due.kind === "late" ? "late" : null }, due.text.toLowerCase()));
   const note = h("button", {
     class: `note${done ? " is-done" : ""}`, type: "button", draggable: "true", "data-priority": task.priority,
     onclick: () => openDrawer(task),
   },
     h("span", { class: "note__pip", "aria-hidden": "true" }),
     h("span", { class: "note__title" }, task.title),
-    meta || (due && h("span", { class: "task__meta" }, h("span", { class: due.kind === "late" ? "hi" : null }, due.text.toLowerCase()))));
+    meta || (due && h("span", { class: "task__meta" }, h("span", { class: due.kind === "late" ? "late" : null }, due.text.toLowerCase()))));
   note.addEventListener("dragstart", (event) => {
     event.dataTransfer.setData("text/plain", String(task.id));
     event.dataTransfer.effectAllowed = "move";
