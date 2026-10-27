@@ -7,15 +7,34 @@
 ![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
 
 API REST para organizar tarefas pessoais, feita com **FastAPI**, **SQLAlchemy 2** e
-**PostgreSQL**. Cada pessoa cria a própria conta, entra com um token **JWT** e gerencia as
+**PostgreSQL**, com uma interface web própria. Cada pessoa cria a própria conta, entra com um token **JWT** e gerencia as
 suas tarefas com prioridade, prazo e etiquetas. Há filtros combinados, busca, ordenação,
 paginação e um resumo com as tarefas atrasadas.
 
 > **Experimente online:** **https://api-tarefas-bl8w.onrender.com**
 >
-> A documentação interativa (Swagger) permite testar cada rota pelo navegador. Clique em
-> **Authorize** e entre com `demo@tarefas.dev` / `demo12345`. Hospedada no plano gratuito do
-> Render: o primeiro acesso depois de um tempo parado pode levar cerca de 50 segundos.
+> Clique em **Entrar na demonstração** e use como um app de tarefas. A documentação da API
+> fica em [`/docs`](https://api-tarefas-bl8w.onrender.com/docs) (login `demo@tarefas.dev` /
+> `demo12345`). Hospedada no plano gratuito do Render: o primeiro acesso depois de um tempo
+> parado pode levar cerca de 50 segundos.
+
+![Interface web](docs/interface.png)
+
+## Interface web
+
+A página inicial é um app de tarefas que conversa com a própria API (HTML, CSS e JavaScript
+puro, sem framework nem etapa de build, em `app/static/`).
+
+- **Anotar do jeito que se fala.** Ao digitar `ligar para o banco amanhã !alta #financas`, a
+  tarefa entra com prazo, prioridade e etiqueta. Entende `hoje`, `amanhã`, `depois de amanhã`,
+  dias da semana (`sexta`), datas (`25/12`), `em 3 dias`, `!alta`/`!média`/`!baixa` e `#etiqueta`,
+  e mostra a interpretação enquanto você digita.
+- **Lista organizada pelo tempo:** atrasadas, hoje, amanhã, próximos dias, mais adiante e sem
+  prazo. A urgência aparece como um traço na margem, mais grosso quanto maior a prioridade.
+- Concluir com um clique (com **Desfazer**), editar tudo num painel, excluir com confirmação.
+- Resumo com progresso e filtros (a fazer, para hoje, atrasadas, em andamento, concluídas),
+  etiquetas clicáveis e busca.
+- Atalhos: `n` para anotar e `/` para buscar. Funciona no celular.
 
 ![Documentação interativa](docs/swagger.png)
 
@@ -28,6 +47,7 @@ paginação e um resumo com as tarefas atrasadas.
 | Banco de dados | SQLAlchemy 2 com ORM tipado (`Mapped`), relacionamento muitos-para-muitos (tarefas ↔ etiquetas), exclusão em cascata |
 | Segurança | Senhas com PBKDF2 + sal, JWT com expiração, limite de tentativas de login, resposta igual para e-mail inexistente e senha errada (não revela quem tem conta), isolamento total entre usuários |
 | Qualidade | 50 testes com pytest, rodando no SQLite **e no PostgreSQL** a cada push (GitHub Actions), lint e formatação com Ruff |
+| Front-end | Interface em JavaScript puro que consome a API, com leitura de linguagem natural para datas, prioridade e etiquetas |
 | Entrega | Docker, docker-compose com PostgreSQL e deploy no Render a partir de um arquivo (`render.yaml`) |
 
 ## Rotas
@@ -137,7 +157,8 @@ app/
 ├── ratelimit.py     # limite de tentativas de login
 ├── errors.py        # respostas de erro padronizadas, em português
 ├── seed.py          # conta de demonstração com tarefas de exemplo
-└── routers/         # auth.py e tasks.py
+├── routers/         # auth.py e tasks.py
+└── static/          # interface web: index.html, app.css, app.js
 tests/               # pytest: autenticação, tarefas, filtros, isolamento, aplicação
 ```
 

@@ -6,13 +6,14 @@ from app.seed import DEMO_EMAIL, DEMO_PASSWORD
 
 
 def test_health(client):
-    assert client.get("/health").json() == {"status": "ok", "version": "1.0.0"}
+    assert client.get("/health").json() == {"status": "ok", "version": "1.1.0"}
 
 
-def test_home_redirects_to_interactive_docs(client):
-    response = client.get("/", follow_redirects=False)
-    assert response.status_code == 307
-    assert response.headers["location"] == "/docs"
+def test_home_serves_the_web_interface(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert client.get("/static/app.js").status_code == 200
     assert client.get("/docs").status_code == 200
 
 
