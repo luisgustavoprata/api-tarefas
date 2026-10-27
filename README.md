@@ -22,19 +22,26 @@ paginação e um resumo com as tarefas atrasadas.
 
 ## Interface web
 
-A página inicial é um app de tarefas que conversa com a própria API (HTML, CSS e JavaScript
+A página inicial é um app de tarefas completo que usa a própria API (HTML, CSS e JavaScript
 puro, sem framework nem etapa de build, em `app/static/`).
 
-- **Anotar do jeito que se fala.** Ao digitar `ligar para o banco amanhã !alta #financas`, a
-  tarefa entra com prazo, prioridade e etiqueta. Entende `hoje`, `amanhã`, `depois de amanhã`,
-  dias da semana (`sexta`), datas (`25/12`), `em 3 dias`, `!alta`/`!média`/`!baixa` e `#etiqueta`,
-  e mostra a interpretação enquanto você digita.
-- **Lista organizada pelo tempo:** atrasadas, hoje, amanhã, próximos dias, mais adiante e sem
-  prazo. A urgência aparece como um traço na margem, mais grosso quanto maior a prioridade.
-- Concluir com um clique (com **Desfazer**), editar tudo num painel, excluir com confirmação.
-- Resumo com progresso e filtros (a fazer, para hoje, atrasadas, em andamento, concluídas),
-  etiquetas clicáveis e busca.
-- Atalhos: `n` para anotar e `/` para buscar. Funciona no celular.
+- **Anotar do jeito que se fala.** Ao digitar `revisar contrato sexta !alta #juridico`, a
+  tarefa entra com prazo, prioridade e etiqueta, e a interpretação aparece enquanto você digita.
+  Entende `hoje`, `amanhã`, `depois de amanhã`, dias da semana, datas (`25/12`), `em 3 dias`,
+  `!alta`/`!média`/`!baixa` e `#etiqueta`.
+- **Lista organizada pelo tempo**: atrasadas, hoje, amanhã, próximos dias, mais adiante e sem
+  prazo. A cor do círculo indica a prioridade.
+- **Quadro (kanban)**: colunas Pendente, Em andamento e Concluída; arrastar um cartão muda a
+  situação da tarefa.
+- **Painel de detalhes** lateral para editar tudo; concluir e excluir têm **Desfazer**.
+- Menu com visões (A fazer, Hoje, Próximos 7 dias, Atrasadas, Concluídas), etiquetas, busca e
+  progresso. **Tema claro e escuro**, atalhos de teclado (`?` mostra a lista) e layout para celular.
+
+| Lista | Quadro |
+|---|---|
+| ![Lista](docs/interface.png) | ![Quadro](docs/quadro.png) |
+| **Entrada** | **Tema escuro e painel de detalhes** |
+| ![Entrada](docs/entrada.png) | ![Tema escuro](docs/escuro.png) |
 
 ![Documentação interativa](docs/swagger.png)
 
@@ -47,7 +54,7 @@ puro, sem framework nem etapa de build, em `app/static/`).
 | Banco de dados | SQLAlchemy 2 com ORM tipado (`Mapped`), relacionamento muitos-para-muitos (tarefas ↔ etiquetas), exclusão em cascata |
 | Segurança | Senhas com PBKDF2 + sal, JWT com expiração, limite de tentativas de login, resposta igual para e-mail inexistente e senha errada (não revela quem tem conta), isolamento total entre usuários |
 | Qualidade | 50 testes com pytest, rodando no SQLite **e no PostgreSQL** a cada push (GitHub Actions), lint e formatação com Ruff |
-| Front-end | Interface em JavaScript puro que consome a API, com leitura de linguagem natural para datas, prioridade e etiquetas |
+| Front-end | Interface em JavaScript puro que consome a API: leitura de linguagem natural, quadro kanban com arrastar e soltar, tema escuro, responsiva e acessível por teclado |
 | Entrega | Docker, docker-compose com PostgreSQL e deploy no Render a partir de um arquivo (`render.yaml`) |
 
 ## Rotas
