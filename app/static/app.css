@@ -66,7 +66,8 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
-  font-family: var(--text); font-size: 15px; line-height: 1.55;
+  /* O texto cresce um pouco em telas grandes (15px no notebook, até 17px em monitores largos). */
+  font-family: var(--text); font-size: clamp(15px, 0.25vw + 11.5px, 17px); line-height: 1.55;
 }
 h1, h2, h3, p { margin: 0; }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -147,7 +148,7 @@ svg { flex: none; width: 16px; height: 16px; }
 
 /* ---------- Estrutura do app ---------- */
 
-.app { display: grid; grid-template-columns: 224px minmax(0, 1fr); min-height: 100vh; }
+.app { display: grid; grid-template-columns: clamp(210px, 15vw, 280px) minmax(0, 1fr); min-height: 100vh; }
 .side {
   position: sticky; top: 0; height: 100vh; overflow-y: auto; border-right: 1px solid var(--line);
   display: flex; flex-direction: column; gap: 30px; padding: 26px 22px 20px;
@@ -177,13 +178,14 @@ svg { flex: none; width: 16px; height: 16px; }
 .side__links a { color: var(--muted); }
 .side__links a:hover { color: var(--ink); }
 
-.main { min-width: 0; padding: 34px clamp(18px, 4.5vw, 64px) 96px; }
-.page { max-width: 900px; }
+/* A área principal ocupa toda a largura que sobra ao lado do menu, em qualquer tela. */
+.main { min-width: 0; padding: clamp(24px, 3vw, 48px) clamp(16px, 3.5vw, 72px) 96px; }
+.page { width: 100%; }
 
 .head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 24px; align-items: end; }
 .head__menu { display: none; }
 .head__title { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
-.head__title h1 { font-family: var(--display); font-size: 34px; line-height: 1.05; letter-spacing: -0.025em; }
+.head__title h1 { font-family: var(--display); font-size: clamp(28px, 2.2vw + 6px, 46px); line-height: 1.05; letter-spacing: -0.025em; }
 .head__date { color: var(--faint); }
 .head__line { grid-column: 1 / -1; color: var(--muted); font-size: 16px; }
 .head__line .late { color: var(--high); }
@@ -199,7 +201,7 @@ svg { flex: none; width: 16px; height: 16px; }
 .jot__row:focus-within { border-bottom-color: var(--accent); }
 .jot__input {
   flex: 1; min-width: 0; border: 0; outline: none; background: none; padding: 10px 0;
-  font-family: var(--display); font-size: 22px; font-weight: 500; letter-spacing: -0.01em;
+  font-family: var(--display); font-size: clamp(19px, 1vw + 9px, 28px); font-weight: 500; letter-spacing: -0.01em;
 }
 .jot__input::placeholder { color: var(--faint); }
 .jot__hint { min-height: 26px; margin-top: 8px; font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
@@ -210,7 +212,7 @@ svg { flex: none; width: 16px; height: 16px; }
 .jot__hint .v.tag { color: var(--accent); }
 
 .tools { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-top: 26px; flex-wrap: wrap; }
-.search { flex: 0 1 280px; border: 0; border-bottom: 1px solid var(--line-strong); background: none; padding: 6px 0; outline: none; }
+.search { flex: 0 1 clamp(220px, 24vw, 420px); border: 0; border-bottom: 1px solid var(--line-strong); background: none; padding: 6px 0; outline: none; }
 .search:focus { border-bottom-color: var(--accent); }
 .search::placeholder { color: var(--faint); }
 .filters { display: flex; gap: 14px; font-size: 14px; color: var(--muted); align-items: baseline; flex-wrap: wrap; }
@@ -219,7 +221,7 @@ svg { flex: none; width: 16px; height: 16px; }
 /* ---------- Lista em forma de caderno: o grupo fica escrito na margem ---------- */
 
 .sheet-list { margin-top: 18px; border-top: 1px solid var(--line-strong); }
-.block { display: grid; grid-template-columns: 116px minmax(0, 1fr); border-bottom: 1px solid var(--line-strong); }
+.block { display: grid; grid-template-columns: clamp(112px, 11vw, 220px) minmax(0, 1fr); border-bottom: 1px solid var(--line-strong); }
 .block__label { padding: 14px 16px 14px 0; font-family: var(--display); font-weight: 700; font-size: 15px; }
 .block__label span { display: block; font-family: var(--text); font-weight: 400; font-size: 13px; color: var(--faint); }
 .block--late .block__label { color: var(--high); }
@@ -354,15 +356,18 @@ kbd { font-family: var(--text); font-size: 12px; font-weight: 600; padding: 0 5p
   .scrim { position: fixed; inset: 0; background: rgba(10, 14, 24, 0.35); z-index: 30; }
   .head { grid-template-columns: minmax(0, 1fr); }
   .head__menu { display: inline-block; justify-self: start; margin-bottom: 10px; border: 0; background: none; padding: 0; color: var(--muted); font-weight: 600; cursor: pointer; }
-  .head__title h1 { font-size: 28px; }
-  .jot__input { font-size: 19px; }
   .block { grid-template-columns: minmax(0, 1fr); }
   .block__label { padding: 14px 0 4px; }
   .block__label span { display: inline; margin-left: 6px; }
   .block__items { border-left: 0; }
-  .task { padding-left: 0; grid-template-columns: auto minmax(0, 1fr); }
-  .task__due { grid-column: 2; padding: 0; }
+  .task { padding-left: 0; }
   .toasts { left: 12px; right: 12px; }
+}
+
+/* Celular: o prazo desce para baixo do título, para o título ter a linha inteira. */
+@media (max-width: 600px) {
+  .task { grid-template-columns: auto minmax(0, 1fr); }
+  .task__due { grid-column: 2; padding: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
