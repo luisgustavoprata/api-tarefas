@@ -3,8 +3,8 @@
  * 1. Utilitários (DOM, ícones, datas)
  * 2. Cliente da API, sessão e tema
  * 3. Leitura da frase digitada ("pagar luz sexta !alta #casa")
- * 4. Tela de entrada
- * 5. App: menu lateral, cabeçalho, anotar, lista, quadro, painel de detalhes
+ * 4. Tela de entrada (com o exemplo sendo digitado)
+ * 5. App: índice lateral, cabeçalho, anotar, lista em forma de caderno, quadro, ficha da tarefa
  *
  * Todo texto vindo da API entra no DOM como texto (nunca innerHTML), o que impede XSS.
  */
@@ -102,7 +102,6 @@ function dueLabel(iso, done = false) {
 }
 
 const PRIORITY_LABEL = { alta: "Alta", media: "Média", baixa: "Baixa" };
-const initials = (name) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("");
 
 /* ===================== 2. API, sessão e tema ===================== */
 
@@ -202,12 +201,7 @@ function toggleTheme() {
   const next = isDark() ? "light" : "dark";
   document.documentElement.dataset.theme = next;
   store.set("tarefas.theme", next);
-  document.querySelectorAll("[data-theme-btn]").forEach(drawThemeButton);
-}
-function drawThemeButton(btn) {
-  btn.setAttribute("aria-label", isDark() ? "Usar tema claro" : "Usar tema escuro");
-  btn.title = btn.getAttribute("aria-label");
-  fill(btn, icon(isDark() ? "sun" : "moon"));
+  document.querySelectorAll("[data-theme-btn]").forEach((btn) => { btn.textContent = themeLabel(); });
 }
 
 function toast(message, { tone = "ok", action } = {}) {
@@ -274,31 +268,89 @@ function parseQuick(text, base = today()) {
 
 const root = () => document.getElementById("root");
 
+/** Números por extenso até dez: "uma tarefa", "duas para hoje". Lê melhor que dígitos numa frase. */
+const WORDS = ["nenhuma", "uma", "duas", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"];
+const word = (n) => WORDS[n] ?? String(n);
+
+const EXAMPLES = [
+  "levar o carro na revisão sexta !alta #carro",
+  "ligar pro contador amanhã #contas",
+  "mandar o orçamento hoje !alta #cliente",
+  "comprar ração em 3 dias #casa",
+];
+
+function exampleResult(text) {
+  const parsed = parseQuick(text);
+  const due = dueLabel(parsed.due_date);
+  return h("div", { class: "sheet__result" },
+    h("span", { class: "sheet__dot", style: parsed.priority === "alta" ? null : "border-color:#c08108" }),
+    h("span", { class: "sheet__title" }, capitalize(parsed.title)),
+    h("span", { class: "sheet__due" }, due ? due.text : ""),
+    h("span", { class: "sheet__meta" },
+      parsed.priority === "alta" && h("span", { class: "hi" }, "prioridade alta"),
+      parsed.tags.map((t) => h("span", { class: "tag" }, `#${t}`))));
+}
+
+/** A frase sendo escrita, letra por letra, e a tarefa que sai dela. */
+function playExamples(lineEl, resultSlot) {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let index = 0;
+  const caret = h("span", { class: "sheet__caret" });
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function loop() {
+    while (lineEl.isConnected) {
+      const text = EXAMPLES[index % EXAMPLES.length];
+      const result = exampleResult(text);
+      fill(resultSlot, result);
+      if (reduce) {
+        fill(lineEl, text);
+        result.classList.add("is-shown");
+        return;
+      }
+      for (let i = 1; i <= text.length && lineEl.isConnected; i += 1) {
+        fill(lineEl, text.slice(0, i), caret);
+        await wait(38 + Math.random() * 50); // ritmo irregular, como alguém digitando
+      }
+      await wait(500);
+      result.classList.add("is-shown");
+      await wait(2800);
+      index += 1;
+    }
+  }
+  loop();
+}
+
+function themeLabel() {
+  return isDark() ? "Tema claro" : "Tema escuro";
+}
+
 function renderAuth(mode = "login") {
   document.title = "Entrar | Tarefas";
   const isLogin = mode === "login";
-  const error = h("p", { class: "form__error", role: "alert" });
+  const error = h("p", { class: "error", role: "alert" });
 
-  const demo = h("button", { class: "btn btn--primary btn--block btn--lg", type: "button" }, "Entrar na demonstração");
+  const demo = h("button", { class: "btn btn--plain", type: "button" }, "Abrir a conta de demonstração");
   demo.addEventListener("click", async () => {
     demo.disabled = true;
-    demo.textContent = "Entrando…";
+    demo.textContent = "Abrindo…";
     try {
       await login(DEMO.email, DEMO.password);
     } catch (err) {
       error.textContent = err.message;
       demo.disabled = false;
-      demo.textContent = "Entrar na demonstração";
+      demo.textContent = "Abrir a conta de demonstração";
     }
   });
 
-  const field = (label, attrs) => h("label", { class: "field" }, h("span", { class: "field__label" }, label), h("input", { class: "input", required: true, ...attrs }));
+  const input = (label, attrs) => h("label", null, h("span", { class: "label" }, label), h("input", { class: "input", required: true, ...attrs }));
   const form = h("form", { class: "form", novalidate: true },
-    !isLogin && field("Seu nome", { name: "name", autocomplete: "name" }),
-    field("E-mail", { name: "email", type: "email", autocomplete: "email" }),
-    field("Senha", { name: "password", type: "password", autocomplete: isLogin ? "current-password" : "new-password", placeholder: isLogin ? null : "Pelo menos 8 caracteres" }),
+    !isLogin && input("Como quer ser chamado", { name: "name", autocomplete: "name" }),
+    input("E-mail", { name: "email", type: "email", autocomplete: "email" }),
+    input("Senha", { name: "password", type: "password", autocomplete: isLogin ? "current-password" : "new-password" }),
+    !isLogin && h("p", { class: "auth__note" }, "A senha precisa de pelo menos 8 caracteres."),
     error,
-    h("button", { class: `btn ${isLogin ? "btn--ghost" : "btn--primary"} btn--block btn--lg`, type: "submit" }, isLogin ? "Entrar" : "Criar conta"));
+    h("div", null, h("button", { class: "btn btn--primary", type: "submit" }, isLogin ? "Entrar" : "Criar a conta")));
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -315,186 +367,159 @@ function renderAuth(mode = "login") {
     }
   });
 
-  const themeBtn = h("button", { class: "icon-btn", type: "button", "data-theme-btn": true, onclick: toggleTheme });
-  drawThemeButton(themeBtn);
-
-  const friday = dueLabel(parseQuick("x sexta").due_date).text; // a data da prévia acompanha o calendário
-  const preview = h("div", { class: "preview", "aria-hidden": "true" },
-    h("div", { class: "preview__capture" }, "pagar a luz sexta !alta #casa", h("span", { class: "preview__caret" })),
-    h("div", { class: "preview__chips" },
-      h("span", { class: "badge badge--date" }, friday),
-      h("span", { class: "badge badge--alta" }, "Alta"),
-      h("span", { class: "badge badge--tag" }, "#casa")),
-    h("p", { class: "preview__group preview__group--late" }, "Atrasadas"),
-    h("div", { class: "preview__row" }, h("span", { class: "preview__dot", style: "border-color:#d4443c" }), h("span", null, "Enviar proposta para o cliente"), h("span", { style: "color:#d4443c" }, "Há 2 dias")),
-    h("p", { class: "preview__group" }, "Hoje"),
-    h("div", { class: "preview__row" }, h("span", { class: "preview__dot", style: "border-color:#c08108" }), h("span", null, "Preparar a apresentação"), h("span", null, "Hoje")),
-    h("div", { class: "preview__row" }, h("span", { class: "preview__dot" }), h("span", null, "Responder o contador"), h("span", null, "Hoje")));
+  const themeBtn = h("button", { class: "text-btn", type: "button", "data-theme-btn": true, onclick: toggleTheme }, themeLabel());
+  const line = h("div", { class: "sheet__line", "aria-hidden": "true" });
+  const resultSlot = h("div", { "aria-hidden": "true" });
 
   fill(root(), h("div", { class: "auth" },
-    h("main", { class: "auth__form-side" }, h("div", { class: "auth__box" },
-      h("div", { style: "display:flex;justify-content:space-between;align-items:center" },
-        h("span", { class: "brand", style: "padding:0" }, h("img", { src: "/static/icon.svg", alt: "" }), "Tarefas"), themeBtn),
-      h("div", null,
+    h("main", { class: "auth__left" },
+      h("div", { class: "auth__top" },
+        h("span", { class: "wordmark" }, h("img", { src: "/static/icon.svg", alt: "" }), "Tarefas"), themeBtn),
+      h("div", { class: "auth__form" },
         h("h1", { class: "auth__title" }, isLogin ? "Entrar" : "Criar conta"),
-        h("p", { class: "auth__lede" }, isLogin ? "Bom te ver de novo." : "Grátis, leva meio minuto.")),
-      isLogin && demo,
-      isLogin && h("p", { class: "auth__or" }, "ou com a sua conta"),
-      form,
-      h("p", { class: "auth__switch" }, isLogin ? "Ainda não tem conta? " : "Já tem conta? ",
-        h("button", { class: "link-btn", type: "button", onclick: () => renderAuth(isLogin ? "register" : "login") }, isLogin ? "Criar conta" : "Entrar")),
-      h("p", { class: "auth__foot" }, "Para desenvolvedores: ", h("a", { href: "/docs" }, "documentação da API")))),
-    h("section", { class: "auth__show", "aria-label": "Sobre o produto" },
-      h("h2", null, "Anote do jeito que você fala. O resto se organiza."),
-      h("div", { class: "auth__points" }, h("ul", null,
-        [
-          "Prazo, prioridade e etiquetas saem da própria frase.",
-          "A lista se arruma pelo que vence primeiro: atrasadas, hoje, próximos dias.",
-          "Lista ou quadro, no computador e no celular.",
-        ].map((text) => h("li", null, icon("check"), h("span", null, text))))),
-      preview)));
+        isLogin && h("div", { class: "auth__demo" },
+          h("p", { class: "auth__note" }, "Só quer dar uma olhada? A conta de demonstração já vem com algumas tarefas."),
+          h("div", null, demo)),
+        form,
+        h("p", { class: "auth__note" }, isLogin ? "Ainda não tem conta? " : "Já tem conta? ",
+          h("button", { class: "link", type: "button", onclick: () => renderAuth(isLogin ? "register" : "login") }, isLogin ? "Criar uma" : "Entrar"))),
+      h("p", { class: "auth__foot" }, "Feito por Luis Gustavo Prata. É também uma API REST: ", h("a", { href: "/docs" }, "documentação"), ".")),
+    h("section", { class: "auth__right", "aria-label": "Como funciona" },
+      h("p", null, "Você escreve a tarefa como anotaria num papel. O prazo, a prioridade e as etiquetas saem da própria frase."),
+      h("div", { class: "sheet" }, line, resultSlot),
+      h("div", { class: "sheet__legend" },
+        h("span", null, h("b", null, "amanhã, sexta, 25/12"), " viram prazo"),
+        h("span", null, h("b", null, "!alta"), " vira prioridade"),
+        h("span", null, h("b", null, "#casa"), " vira etiqueta")))));
+  playExamples(line, resultSlot);
 }
 
 /* ===================== 5. App ===================== */
 
 const VIEWS = {
-  inbox: { label: "A fazer", icon: "inbox", params: () => ({ status: ["pendente", "em_andamento"] }) },
-  today: { label: "Hoje", icon: "today", params: () => ({ status: ["pendente", "em_andamento"], due_to: toISO(today()) }) },
+  inbox: { label: "A fazer", params: () => ({ status: ["pendente", "em_andamento"] }) },
+  today: { label: "Hoje", params: () => ({ status: ["pendente", "em_andamento"], due_to: toISO(today()) }) },
   week: {
-    label: "Próximos 7 dias", icon: "week",
+    label: "Esta semana",
     params: () => ({ status: ["pendente", "em_andamento"], due_from: toISO(today()), due_to: toISO(addDays(today(), 7)) }),
   },
-  late: { label: "Atrasadas", icon: "late", params: () => ({ overdue: "true" }) },
-  done: { label: "Concluídas", icon: "done", params: () => ({ status: ["concluida"] }), sort: "-created_at" },
+  late: { label: "Atrasadas", params: () => ({ overdue: "true" }) },
+  done: { label: "Feitas", params: () => ({ status: ["concluida"] }), sort: "-created_at" },
 };
 
-const COLUMNS = [
-  ["pendente", "Pendente", "var(--faint)"],
-  ["em_andamento", "Em andamento", "var(--accent)"],
-  ["concluida", "Concluída", "var(--done)"],
-];
+const LANES = [["pendente", "Pendente"], ["em_andamento", "Em andamento"], ["concluida", "Feita"]];
 
 let els = {};
 
 function renderApp() {
   document.title = "Tarefas";
-  const app = h("div", { class: `app` });
-
-  /* Menu lateral */
-  els.nav = h("nav", { class: "nav", "aria-label": "Visões" });
-  els.tagNav = h("nav", { class: "nav", "aria-label": "Etiquetas" });
-  els.progress = h("div", { class: "progress" });
-  const sidebar = h("aside", { class: "sidebar", id: "sidebar" },
-    h("span", { class: "brand" }, h("img", { src: "/static/icon.svg", alt: "" }), "Tarefas"),
-    els.nav,
-    els.tagNav,
-    h("div", { class: "sidebar__foot" },
-      els.progress,
-      h("div", { class: "me" },
-        h("span", { class: "avatar", "aria-hidden": "true" }, initials(state.user.name)),
-        h("div", null, h("p", { class: "me__name" }, state.user.name), h("p", { class: "me__email" }, state.user.email)),
-        h("button", { class: "icon-btn", type: "button", "aria-label": "Sair", title: "Sair", onclick: logout }, icon("logout")))));
-
+  const app = h("div", { class: "app" });
+  const scrim = h("div", { class: "scrim", hidden: true });
   const closeMenu = () => { app.classList.remove("menu-open"); scrim.hidden = true; };
-  const scrim = h("div", { class: "scrim", hidden: true, onclick: closeMenu });
+  scrim.addEventListener("click", closeMenu);
   els.closeMenu = closeMenu;
 
+  /* Menu lateral: só texto, como um índice */
+  els.views = h("nav", { class: "views", "aria-label": "Visões" });
+  els.tags = h("div");
+  els.tally = h("div");
+  const themeBtn = h("button", { class: "text-btn", type: "button", "data-theme-btn": true, onclick: toggleTheme }, themeLabel());
+  const side = h("aside", { class: "side", id: "menu" },
+    h("span", { class: "wordmark" }, h("img", { src: "/static/icon.svg", alt: "" }), "Tarefas"),
+    els.views, els.tags,
+    h("div", { class: "side__foot" },
+      els.tally,
+      h("p", null, state.user.name),
+      h("div", { class: "side__links" },
+        h("button", { class: "text-btn", type: "button", onclick: openShortcuts }, "Atalhos"),
+        themeBtn,
+        h("a", { class: "text-btn", href: "/docs", target: "_blank", rel: "noopener" }, "API"),
+        h("button", { class: "text-btn", type: "button", onclick: logout }, "Sair"))));
+
   /* Cabeçalho */
-  els.title = h("h1", { class: "head__title", tabindex: "-1" });
-  els.sub = h("p", { class: "head__sub" });
-  const themeBtn = h("button", { class: "icon-btn", type: "button", "data-theme-btn": true, onclick: toggleTheme });
-  drawThemeButton(themeBtn);
-  els.modeSwitch = h("div", { class: "switch", role: "group", "aria-label": "Forma de ver" });
+  els.title = h("h1", { tabindex: "-1" });
+  els.line = h("p", { class: "head__line" });
+  els.modes = h("div", { class: "modes", role: "group", "aria-label": "Forma de ver" });
 
   /* Anotar */
-  const capture = h("input", {
-    class: "capture__input", id: "capture", autocomplete: "off", maxlength: "200", "aria-label": "Nova tarefa",
-    placeholder: matchMedia("(max-width: 600px)").matches ? "Anotar tarefa…" : "Anotar tarefa: “ligar para o banco amanhã !alta #financas”",
+  const jot = h("input", {
+    class: "jot__input", id: "jot", autocomplete: "off", maxlength: "200", "aria-label": "Nova tarefa",
+    placeholder: "O que precisa ser feito?",
   });
-  const add = h("button", { class: "btn btn--primary", type: "submit" }, "Adicionar");
-  const preview = h("div", { class: "capture__preview", "aria-live": "polite" });
-  const captureForm = h("form", { class: "capture", autocomplete: "off" },
-    h("div", { class: "capture__box" }, icon("plus"), capture, add), preview);
+  const hint = h("p", { class: "jot__hint", "aria-live": "polite" });
+  const add = h("button", { class: "btn btn--primary", type: "submit" }, "Anotar");
+  const jotForm = h("form", { class: "jot", autocomplete: "off" }, h("div", { class: "jot__row" }, jot, add), hint);
 
-  function drawPreview() {
-    const parsed = parseQuick(capture.value);
-    if (!capture.value.trim()) {
-      fill(preview, h("span", null, "Escreva como fala: "),
-        ["amanhã", "sexta", "25/12", "!alta", "#cliente"].map((w) => [h("code", null, w), " "]),
-        h("span", null, "entram como prazo, prioridade e etiqueta."));
+  function drawHint() {
+    if (!jot.value.trim()) {
+      fill(hint, h("span", null, "Por exemplo: ", h("em", null, "levar o carro na revisão sexta !alta #carro")));
       return;
     }
+    const parsed = parseQuick(jot.value);
     const due = dueLabel(parsed.due_date);
-    fill(preview,
-      h("span", null, parsed.title ? "Vai entrar como" : "Falta dizer o que fazer"),
-      due && h("span", { class: "badge badge--date" }, icon("clock"), due.text),
-      parsed.priority && h("span", { class: `badge badge--${parsed.priority}` }, icon("flag"), PRIORITY_LABEL[parsed.priority]),
-      parsed.tags.map((t) => h("span", { class: "badge badge--tag" }, `#${t}`)));
+    fill(hint,
+      h("span", null, h("span", { class: "k" }, "Prazo "), h("span", { class: "v" }, due ? due.text.toLowerCase() : "sem prazo")),
+      h("span", null, h("span", { class: "k" }, "Prioridade "),
+        h("span", { class: `v${parsed.priority === "alta" ? " hi" : ""}` }, (PRIORITY_LABEL[parsed.priority] || "Média").toLowerCase())),
+      parsed.tags.length > 0 && h("span", null, h("span", { class: "k" }, "Etiquetas "),
+        parsed.tags.map((t) => h("span", { class: "v tag" }, `#${t} `))),
+      !parsed.title && h("span", { class: "v hi" }, "falta dizer o que fazer"));
   }
-  capture.addEventListener("input", drawPreview);
-  drawPreview();
+  jot.addEventListener("input", drawHint);
+  drawHint();
 
-  captureForm.addEventListener("submit", async (event) => {
+  jotForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const parsed = parseQuick(capture.value);
-    if (!parsed.title) {
-      capture.focus();
-      toast("Escreva o que precisa ser feito.", { tone: "error" });
-      return;
-    }
+    const parsed = parseQuick(jot.value);
+    if (!parsed.title) { jot.focus(); return; }
     add.disabled = true;
     try {
       const task = await api.post("/tasks", {
-        title: parsed.title, due_date: parsed.due_date || null, priority: parsed.priority || "media", tags: parsed.tags,
+        title: capitalize(parsed.title), due_date: parsed.due_date || null,
+        priority: parsed.priority || "media", tags: parsed.tags,
       });
-      capture.value = "";
-      drawPreview();
+      jot.value = "";
+      drawHint();
       state.highlight = task.id;
       if (state.view === "done" || state.view === "late") state.view = "inbox";
       await refresh();
-      toast("Tarefa adicionada.");
+      toast("Anotada.");
     } catch (err) {
       toast(err.message, { tone: "error" });
     } finally {
       add.disabled = false;
-      capture.focus();
+      jot.focus();
     }
   });
 
-  /* Busca */
-  const search = h("input", { class: "input", type: "search", placeholder: "Buscar tarefas", "aria-label": "Buscar tarefas", value: state.q });
-  let searchTimer;
+  /* Busca e filtros */
+  const search = h("input", { class: "search", type: "search", placeholder: "Procurar…", "aria-label": "Procurar tarefas", value: state.q });
+  let timer;
   search.addEventListener("input", () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => { state.q = search.value.trim(); drawChrome(); loadTasks(); }, 250);
+    clearTimeout(timer);
+    timer = setTimeout(() => { state.q = search.value.trim(); drawChrome(); loadTasks(); }, 250);
   });
   els.search = search;
-  els.filters = h("div", { style: "display:flex;gap:6px;flex-wrap:wrap" });
+  els.filters = h("div", { class: "filters" });
   els.content = h("section", { "aria-live": "polite" });
 
-  fill(app,
-    sidebar, scrim,
-    h("main", { class: "main" }, h("div", { class: "main__inner" },
+  fill(app, side, scrim,
+    h("main", { class: "main" }, h("div", { class: "page" },
       h("header", { class: "head" },
-        h("button", { class: "icon-btn head__menu", type: "button", "aria-label": "Abrir menu", "aria-controls": "sidebar",
-          onclick: () => { app.classList.add("menu-open"); scrim.hidden = false; } }, icon("menu")),
-        h("div", { class: "head__titles" }, els.title, els.sub),
-        h("div", { class: "head__actions" }, els.modeSwitch,
-          h("a", { class: "icon-btn", href: "/docs", target: "_blank", rel: "noopener", "aria-label": "Documentação da API", title: "Documentação da API" }, icon("code")),
-          h("button", { class: "icon-btn", type: "button", "aria-label": "Atalhos de teclado", title: "Atalhos de teclado", onclick: openShortcuts }, icon("keyboard")),
-          themeBtn)),
-      captureForm,
-      h("div", { class: "toolbar" }, h("div", { class: "search" }, icon("search"), search, h("kbd", null, "/")), els.filters),
+        h("button", { class: "head__menu", type: "button", "aria-controls": "menu",
+          onclick: () => { app.classList.add("menu-open"); scrim.hidden = false; } }, "Menu"),
+        h("div", { class: "head__title" }, els.title, h("span", { class: "head__date" }, longDate.format(new Date()))),
+        els.modes,
+        els.line),
+      jotForm,
+      h("div", { class: "tools" }, search, els.filters),
       els.content)));
   fill(root(), app);
 
   document.onkeydown = (event) => {
     if (event.target.closest("input, textarea, select, dialog") || event.metaKey || event.ctrlKey || event.altKey) return;
     const keys = {
-      n: () => capture.focus(),
-      "/": () => search.focus(),
-      b: () => setMode(state.mode === "board" ? "list" : "board"),
-      "?": openShortcuts,
+      n: () => jot.focus(), "/": () => search.focus(), b: () => setMode(state.mode === "board" ? "list" : "board"), "?": openShortcuts,
       1: () => setView("inbox"), 2: () => setView("today"), 3: () => setView("week"), 4: () => setView("late"), 5: () => setView("done"),
     };
     if (keys[event.key]) { event.preventDefault(); keys[event.key](); }
@@ -502,7 +527,7 @@ function renderApp() {
 
   drawChrome();
   refresh();
-  capture.focus();
+  jot.focus();
 }
 
 function setView(view) {
@@ -527,59 +552,60 @@ function setTag(tag) {
   loadTasks();
 }
 
-/** Menu lateral, título, resumo e filtros ativos. */
+/** A frase do cabeçalho, escrita como alguém diria. */
+function summary(s) {
+  if (!s) return [];
+  const open = s.total - s.by_status.concluida;
+  const late = s.overdue;
+  const due = s.due_today;
+  const lateText = h("span", { class: "late" }, `${capitalize(word(late))} ${late === 1 ? "tarefa atrasada" : "tarefas atrasadas"}`);
+  if (!open) return ["Nada pendente. Quando lembrar de algo, é só anotar."];
+  if (late && due) return [lateText, ` e ${word(due)} para hoje.`];
+  if (late) return [lateText, ". O resto está em dia."];
+  if (due) return [`${capitalize(word(due))} para hoje, ${word(open)} em aberto no total.`];
+  return [`Nada vence hoje. ${capitalize(word(open))} em aberto.`];
+}
+
 function drawChrome() {
   const s = state.stats;
   const counts = s && {
-    inbox: s.total - s.by_status.concluida,
-    today: s.due_today + s.overdue,
-    week: null,
-    late: s.overdue,
-    done: s.by_status.concluida,
+    inbox: s.total - s.by_status.concluida, today: s.due_today + s.overdue, week: null,
+    late: s.overdue, done: s.by_status.concluida,
   };
+  fill(els.views, Object.entries(VIEWS).map(([key, view]) => h("button", {
+    class: "view", type: "button", "aria-current": String(state.view === key && state.mode === "list"), onclick: () => {
+      if (state.mode === "board") state.mode = "list";
+      setView(key);
+    },
+  }, h("span", null, view.label),
+    counts && counts[key] ? h("span", { class: `view__n${key === "late" ? " view__n--late" : ""}` }, counts[key]) : null)));
 
-  fill(els.nav, Object.entries(VIEWS).map(([key, view]) => h("button", {
-    class: "nav__item", type: "button", "aria-current": String(state.view === key), onclick: () => setView(key),
-  }, icon(view.icon), h("span", null, view.label),
-    counts && counts[key] !== null && counts[key] > 0 &&
-      h("span", { class: `nav__n${key === "late" ? " nav__n--late" : ""}` }, counts[key]))));
-
-  fill(els.tagNav, state.tags.length > 0 && [
-    h("p", { class: "nav__title" }, "Etiquetas"),
-    state.tags.map((t) => h("button", {
-      class: "nav__item", type: "button", "aria-current": String(state.tag === t.name), onclick: () => setTag(t.name),
-    }, h("span", { class: "nav__hash", "aria-hidden": "true" }, "#"), h("span", null, t.name), h("span", { class: "nav__n" }, t.tasks))),
+  fill(els.tags, state.tags.length > 0 && [
+    h("p", { class: "side__label" }, "Etiquetas"),
+    h("div", { class: "tagcloud" }, state.tags.map((t) => h("button", {
+      type: "button", "aria-pressed": String(state.tag === t.name), onclick: () => setTag(t.name),
+    }, `#${t.name}`, h("small", null, t.tasks)))),
   ]);
 
   if (s) {
     const percent = Math.round(s.completion_rate * 100);
-    fill(els.progress,
-      h("div", { class: "progress__label" }, h("span", null, "Concluídas"), h("span", null, `${s.by_status.concluida} de ${s.total}`)),
-      h("div", { class: "progress__bar", role: "progressbar", "aria-valuenow": percent, "aria-valuemin": 0, "aria-valuemax": 100, "aria-label": "Tarefas concluídas" },
+    fill(els.tally,
+      h("p", null, `${capitalize(word(s.by_status.concluida))} de ${s.total} feitas`),
+      h("div", { class: "tally__bar", role: "progressbar", "aria-valuenow": percent, "aria-valuemin": 0, "aria-valuemax": 100, "aria-label": "Tarefas feitas" },
         h("span", { style: `width:${percent}%` })));
   }
 
   els.title.textContent = state.mode === "board" ? "Quadro" : VIEWS[state.view].label;
-  const parts = [];
-  if (s) {
-    if (s.overdue) parts.push(h("span", { class: "late" }, plural(s.overdue, "atrasada", "atrasadas")));
-    if (s.due_today) parts.push(h("strong", null, `${s.due_today} para hoje`));
-    const open = s.total - s.by_status.concluida;
-    parts.push(`${plural(open, "em aberto", "em aberto")}`);
-  }
-  fill(els.sub, capitalize(longDate.format(new Date())), parts.length ? ". " : "",
-    parts.map((p, i) => [i > 0 ? (i === parts.length - 1 ? " e " : ", ") : "", p]), parts.length ? "." : "");
-
-  fill(els.modeSwitch, [["list", "Lista", "list"], ["board", "Quadro", "board"]].map(([mode, label, ic]) => h("button", {
+  fill(els.line, summary(s));
+  fill(els.modes, [["list", "Lista"], ["board", "Quadro"]].map(([mode, label]) => h("button", {
     type: "button", "aria-pressed": String(state.mode === mode), onclick: () => setMode(mode),
-  }, icon(ic), h("span", null, label))));
+  }, label)));
 
-  const chip = (label, onClear) => h("span", { class: "chip-filter" }, label,
-    h("button", { type: "button", "aria-label": `Remover filtro ${label}`, onclick: onClear }, icon("close")));
+  const clear = (fn) => h("button", { class: "text-btn", type: "button", onclick: fn }, "limpar");
   fill(els.filters,
-    state.mode === "board" && state.view !== "inbox" && chip(VIEWS[state.view].label, () => setView("inbox")),
-    state.tag && chip(`#${state.tag}`, () => setTag(state.tag)),
-    state.q && chip(`“${state.q}”`, () => { state.q = ""; els.search.value = ""; drawChrome(); loadTasks(); }));
+    state.mode === "board" && state.view !== "inbox" && h("span", null, "Só ", h("b", null, VIEWS[state.view].label.toLowerCase()), " ", clear(() => setView("inbox"))),
+    state.tag && h("span", null, "Só ", h("b", null, `#${state.tag}`), " ", clear(() => setTag(state.tag))),
+    state.q && h("span", null, "Com ", h("b", null, `“${state.q}”`), " ", clear(() => { state.q = ""; els.search.value = ""; drawChrome(); loadTasks(); })));
 }
 
 async function refresh() {
@@ -590,13 +616,13 @@ async function loadSide() {
   try {
     [state.stats, state.tags] = await Promise.all([api.get("/tasks/stats"), api.get("/tags")]);
     drawChrome();
-  } catch { /* a área principal já mostra o erro */ }
+  } catch { /* a área principal mostra o erro */ }
 }
 
 let loadSeq = 0;
 async function loadTasks() {
   const seq = ++loadSeq;
-  if (!state.tasks.length) fill(els.content, h("div", { class: "skeleton", "aria-label": "Carregando" }, h("span"), h("span"), h("span")));
+  if (!state.tasks.length) fill(els.content, h("p", { class: "quiet" }, "Carregando…"));
   const view = VIEWS[state.view];
   const params = view.params();
   if (state.mode === "board") delete params.status; // o quadro mostra todas as situações
@@ -615,196 +641,193 @@ async function loadTasks() {
     else drawList();
     state.highlight = null;
   } catch (err) {
-    if (err.status !== 401) fill(els.content, h("div", { class: "empty" }, h("p", { class: "empty__title" }, "Não foi possível carregar"), h("p", null, err.message)));
+    if (err.status !== 401) fill(els.content, h("div", { class: "quiet" }, h("strong", null, "Não deu para carregar"), err.message));
   }
 }
 
 /* ---------- Lista ---------- */
 
 function groupTasks(tasks) {
-  if (state.view === "done") return [["Concluídas", tasks, ""]];
+  if (state.view === "done") return [["Feitas", tasks, ""]];
   const t0 = today();
-  const buckets = { late: [], today: [], tomorrow: [], week: [], later: [], none: [] };
+  const b = { late: [], today: [], tomorrow: [], week: [], later: [], none: [] };
   for (const task of tasks) {
-    if (!task.due_date) { buckets.none.push(task); continue; }
+    if (!task.due_date) { b.none.push(task); continue; }
     const diff = daysBetween(t0, fromISO(task.due_date));
-    if (task.overdue || diff < 0) buckets.late.push(task);
-    else if (diff === 0) buckets.today.push(task);
-    else if (diff === 1) buckets.tomorrow.push(task);
-    else if (diff < 7) buckets.week.push(task);
-    else buckets.later.push(task);
+    if (task.overdue || diff < 0) b.late.push(task);
+    else if (diff === 0) b.today.push(task);
+    else if (diff === 1) b.tomorrow.push(task);
+    else if (diff < 7) b.week.push(task);
+    else b.later.push(task);
   }
   return [
-    ["Atrasadas", buckets.late, "late"],
-    ["Hoje", buckets.today, ""],
-    ["Amanhã", buckets.tomorrow, ""],
-    ["Próximos dias", buckets.week, ""],
-    ["Mais adiante", buckets.later, ""],
-    ["Sem prazo", buckets.none, ""],
+    ["Atrasadas", b.late, "late"], ["Hoje", b.today, ""], ["Amanhã", b.tomorrow, ""],
+    ["Esta semana", b.week, ""], ["Mais pra frente", b.later, ""], ["Sem prazo", b.none, ""],
   ].filter(([, items]) => items.length);
 }
 
-const EMPTY = {
-  inbox: ["Tudo em dia", "Nenhuma tarefa em aberto. Anote a próxima no campo acima."],
-  today: ["Nada para hoje", "Use “hoje” ao anotar para colocar uma tarefa aqui."],
-  week: ["Semana livre", "Nenhuma tarefa vence nos próximos 7 dias."],
-  late: ["Nada atrasado", "Todas as tarefas com prazo estão em dia."],
-  done: ["Nenhuma concluída ainda", "Marque o círculo de uma tarefa quando terminar."],
+const QUIET = {
+  inbox: ["Nada pendente", "Quando lembrar de algo, é só anotar ali em cima."],
+  today: ["Nada para hoje", "Escreva “hoje” ao anotar para a tarefa aparecer aqui."],
+  week: ["Semana livre", "Nenhuma tarefa vence nos próximos sete dias."],
+  late: ["Nada atrasado", "Tudo o que tem prazo está em dia."],
+  done: ["Nada feito ainda", "Marque o círculo de uma tarefa quando terminar."],
 };
 
 function drawList() {
   if (!state.tasks.length) {
-    const [title, text] = state.tag || state.q ? ["Nada encontrado", "Tente outra busca ou remova o filtro."] : EMPTY[state.view];
-    fill(els.content, h("div", { class: "empty" }, icon("done"), h("p", { class: "empty__title" }, title), h("p", null, text)));
+    const [title, text] = state.tag || state.q ? ["Nada encontrado", "Tente outra palavra ou limpe o filtro."] : QUIET[state.view];
+    fill(els.content, h("div", { class: "quiet" }, h("strong", null, title), text));
     return;
   }
-  fill(els.content, groupTasks(state.tasks).map(([title, items, kind]) =>
-    h("section", { class: `group${kind ? ` group--${kind}` : ""}` },
-      h("div", { class: "group__head" }, h("h2", { class: "group__title" }, title), h("span", { class: "group__count" }, items.length)),
-      h("div", { class: "card-list" }, items.map(taskRow)))));
+  fill(els.content, h("div", { class: "sheet-list" }, groupTasks(state.tasks).map(([label, items, kind]) =>
+    h("section", { class: `block${kind ? ` block--${kind}` : ""}`, "aria-label": label },
+      h("h2", { class: "block__label" }, label, h("span", null, `${items.length} ${items.length === 1 ? "tarefa" : "tarefas"}`)),
+      h("div", { class: "block__items" }, items.map(taskRow))))));
 }
 
-function taskMeta(task, { showDue = false, showStatus = true } = {}) {
+function metaLine(task, { status = true } = {}) {
   const done = task.status === "concluida";
-  const due = showDue && dueLabel(task.due_date, done);
-  return [
-    showStatus && task.status === "em_andamento" && h("span", { class: "badge badge--doing" }, "Em andamento"),
-    !done && task.priority !== "media" && h("span", { class: `badge badge--${task.priority}` }, icon("flag"), PRIORITY_LABEL[task.priority]),
-    due && h("span", { class: `task__due${due.kind ? ` task__due--${due.kind}` : ""}` }, icon("clock"), due.text),
-    task.tags.map((t) => h("span", { class: "tag" }, t)),
-  ];
+  const parts = [
+    status && task.status === "em_andamento" && h("span", null, "em andamento"),
+    !done && task.priority === "alta" && h("span", { class: "hi" }, "prioridade alta"),
+    !done && task.priority === "baixa" && h("span", null, "pode esperar"),
+    task.tags.map((t) => h("span", { class: "tag" }, `#${t}`)),
+  ].flat().filter(Boolean);
+  return parts.length ? h("span", { class: "task__meta" }, parts) : null;
 }
 
 function taskRow(task) {
   const done = task.status === "concluida";
   const due = dueLabel(task.due_date, done);
-  const meta = taskMeta(task).flat().filter(Boolean);
-  const row = h("article", {
-    class: `task${done ? " is-done" : ""}${state.highlight === task.id ? " is-new" : ""}`,
-    "data-priority": task.priority,
-  });
-  const check = h("button", {
-    class: `check${done ? " check--done" : task.status === "em_andamento" ? " check--doing" : ""}`, type: "button",
-    "aria-label": done ? `Reabrir: ${task.title}` : `Concluir: ${task.title}`,
-    onclick: () => toggleDone(task, row, check),
+  const row = h("article", { class: `task${done ? " is-done" : ""}${state.highlight === task.id ? " is-new" : ""}`, "data-priority": task.priority });
+  const dot = h("button", {
+    class: `dot${done ? " dot--done" : task.status === "em_andamento" ? " dot--doing" : ""}`, type: "button",
+    "aria-label": done ? `Desmarcar: ${task.title}` : `Marcar como feita: ${task.title}`,
+    onclick: () => toggleDone(task, row, dot),
   }, icon("check"));
-  fill(row,
-    check,
-    h("button", { class: "task__main", type: "button", onclick: () => openDrawer(task) },
+  fill(row, dot,
+    h("button", { class: "task__body", type: "button", onclick: () => openDrawer(task) },
       h("span", { class: "task__title" }, task.title),
-      task.description && h("span", { class: "task__desc" }, task.description),
-      meta.length > 0 && h("span", { class: "task__meta" }, meta)),
-    due && h("span", { class: `task__due${due.kind ? ` task__due--${due.kind}` : ""}` }, due.text));
+      task.description && h("span", { class: "task__note" }, task.description),
+      metaLine(task)),
+    due && h("span", { class: `task__due${due.kind ? ` task__due--${due.kind}` : ""}` }, due.text.toLowerCase()));
   return row;
 }
 
-async function toggleDone(task, row, check) {
+async function toggleDone(task, row, dot) {
   const next = task.status === "concluida" ? "pendente" : "concluida";
-  check.disabled = true;
-  if (next === "concluida") check.className = "check check--done";
+  dot.disabled = true;
+  if (next === "concluida") dot.className = "dot dot--done";
   try {
     await api.patch(`/tasks/${task.id}`, { status: next });
-    const leaves = (next === "concluida" && state.view !== "done") || (next !== "concluida" && state.view === "done");
+    const leaves = (next === "concluida") !== (state.view === "done");
     if (leaves) {
       row.classList.add("is-leaving");
       await new Promise((r) => setTimeout(r, 260));
     }
     await refresh();
     if (next === "concluida") {
-      toast("Tarefa concluída.", { action: { label: "Desfazer", run: async () => {
+      toast("Feita.", { action: { label: "Desfazer", run: async () => {
         await api.patch(`/tasks/${task.id}`, { status: task.status });
         refresh();
       } } });
     }
   } catch (err) {
-    check.disabled = false;
+    dot.disabled = false;
     toast(err.message, { tone: "error" });
   }
 }
 
-/* ---------- Quadro (arrastar entre colunas muda a situação) ---------- */
+/* ---------- Quadro: arrastar entre colunas muda a situação ---------- */
 
 function drawBoard() {
-  const byStatus = Object.fromEntries(COLUMNS.map(([s]) => [s, []]));
-  for (const task of state.tasks) byStatus[task.status].push(task);
-  const MAX_DONE = 20;
+  const by = Object.fromEntries(LANES.map(([s]) => [s, []]));
+  for (const task of state.tasks) by[task.status].push(task);
 
-  fill(els.content, h("div", { class: "board" }, COLUMNS.map(([status, label, color]) => {
-    const items = status === "concluida" ? byStatus[status].slice(0, MAX_DONE) : byStatus[status];
-    const column = h("section", { class: "column", "data-status": status, "aria-label": label },
-      h("div", { class: "column__head" },
-        h("span", { class: "column__dot", style: `background:${color}` }),
-        h("h2", { class: "column__title" }, label),
-        h("span", { class: "column__n" }, byStatus[status].length)),
-      h("div", { class: "column__body" },
-        items.length ? items.map(boardCard) : h("p", { class: "column__empty" }, "Arraste tarefas para cá")));
+  fill(els.content, h("div", { class: "board" }, LANES.map(([status, label]) => {
+    const items = status === "concluida" ? by[status].slice(0, 20) : by[status];
+    const lane = h("section", { class: "lane", "data-status": status, "aria-label": label },
+      h("div", { class: "lane__head" }, h("h2", { class: "lane__title" }, label), h("span", { class: "lane__n" }, by[status].length)),
+      h("div", { class: "lane__body" }, items.length ? items.map(boardNote) : h("p", { class: "lane__empty" }, "Arraste uma tarefa para cá.")));
 
-    column.addEventListener("dragover", (event) => { event.preventDefault(); column.classList.add("is-over"); });
-    column.addEventListener("dragleave", (event) => { if (!column.contains(event.relatedTarget)) column.classList.remove("is-over"); });
-    column.addEventListener("drop", async (event) => {
+    lane.addEventListener("dragover", (event) => { event.preventDefault(); lane.classList.add("is-over"); });
+    lane.addEventListener("dragleave", (event) => { if (!lane.contains(event.relatedTarget)) lane.classList.remove("is-over"); });
+    lane.addEventListener("drop", async (event) => {
       event.preventDefault();
-      column.classList.remove("is-over");
+      lane.classList.remove("is-over");
       const id = Number(event.dataTransfer.getData("text/plain"));
       const task = state.tasks.find((t) => t.id === id);
       if (!task || task.status === status) return;
-      task.status = status; // mostra já no lugar novo enquanto salva
+      task.status = status;
       drawBoard();
       try {
         await api.patch(`/tasks/${id}`, { status });
         await refresh();
-        toast(`Movida para ${label}.`);
+        toast(`Movida para “${label}”.`);
       } catch (err) {
         toast(err.message, { tone: "error" });
         refresh();
       }
     });
-    return column;
+    return lane;
   })));
 }
 
-function boardCard(task) {
+function boardNote(task) {
   const done = task.status === "concluida";
-  const meta = taskMeta(task, { showDue: true, showStatus: false }).flat().filter(Boolean);
-  const card = h("button", {
-    class: `kcard${done ? " is-done" : ""}`, type: "button", draggable: "true", "data-priority": task.priority,
+  const due = dueLabel(task.due_date, done);
+  const meta = metaLine(task, { status: false });
+  if (due && meta) meta.prepend(h("span", { class: due.kind === "late" ? "hi" : null }, due.text.toLowerCase()));
+  const note = h("button", {
+    class: `note${done ? " is-done" : ""}`, type: "button", draggable: "true", "data-priority": task.priority,
     onclick: () => openDrawer(task),
   },
-    h("span", { class: "kcard__title" }, task.title),
-    meta.length > 0 && h("span", { class: "kcard__meta" }, meta));
-  card.addEventListener("dragstart", (event) => {
+    h("span", { class: "note__pip", "aria-hidden": "true" }),
+    h("span", { class: "note__title" }, task.title),
+    meta || (due && h("span", { class: "task__meta" }, h("span", { class: due.kind === "late" ? "hi" : null }, due.text.toLowerCase()))));
+  note.addEventListener("dragstart", (event) => {
     event.dataTransfer.setData("text/plain", String(task.id));
     event.dataTransfer.effectAllowed = "move";
-    card.classList.add("is-dragging");
+    note.classList.add("is-dragging");
   });
-  card.addEventListener("dragend", () => card.classList.remove("is-dragging"));
-  return card;
+  note.addEventListener("dragend", () => note.classList.remove("is-dragging"));
+  return note;
 }
 
-/* ---------- Painel de detalhes ---------- */
+/* ---------- Ficha da tarefa ---------- */
+
+const fullDate = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
 function openDrawer(task) {
-  const dialog = h("dialog", { class: "drawer", "aria-label": "Detalhes da tarefa" });
+  const dialog = h("dialog", { class: "drawer", "aria-label": "Tarefa" });
   const close = () => dialog.close();
   dialog.addEventListener("close", () => dialog.remove());
-  dialog.addEventListener("click", (event) => { if (event.target === dialog) close(); }); // clique fora fecha
+  dialog.addEventListener("click", (event) => { if (event.target === dialog) close(); });
 
-  const segmented = (name, options, value) => h("div", { class: "segmented", role: "radiogroup", "aria-label": name === "status" ? "Situação" : "Prioridade" },
-    options.map(([v, label]) => h("label", null, h("input", { type: "radio", name, value: v, checked: v === value }), h("span", null, label))));
+  const select = (name, options, value) => h("select", { name },
+    options.map(([v, label]) => h("option", { value: v, selected: v === value }, label)));
+  const prop = (label, control) => h("div", { class: "prop" }, h("dt", null, label), h("dd", null, control));
 
-  const form = h("form", { class: "drawer__inner", novalidate: true });
-  const title = h("input", { class: "drawer__title-input", name: "title", value: task.title, maxlength: "120", "aria-label": "Título" });
-  const field = (label, control) => h("div", { class: "field" }, h("span", { class: "field__label" }, label), control);
-  const description = h("textarea", { class: "input", name: "description", maxlength: "2000", placeholder: "Anotações, links, próximos passos…", "aria-label": "Detalhes" });
-  description.value = task.description || "";
-  const error = h("p", { class: "form__error", role: "alert" });
+  // Título em área de texto para quebrar linha em títulos longos; Enter salva em vez de pular linha.
+  const title = h("textarea", { class: "drawer__title", name: "title", rows: "1", maxlength: "120", "aria-label": "Título" });
+  title.value = task.title;
+  const fit = () => { title.style.height = "auto"; title.style.height = `${title.scrollHeight}px`; };
+  title.addEventListener("input", fit);
+  title.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") { event.preventDefault(); title.form.requestSubmit(); }
+  });
+  const notes = h("textarea", { name: "description", maxlength: "2000", id: "notes", placeholder: "Links, telefones, o que já foi feito…" });
+  notes.value = task.description || "";
+  const error = h("p", { class: "error", role: "alert" });
 
-  const remove = h("button", { class: "btn btn--danger", type: "button" }, "Excluir");
+  const remove = h("button", { class: "btn btn--danger", type: "button" }, "Excluir tarefa");
   let confirmTimer;
   remove.addEventListener("click", async () => {
     if (!remove.classList.contains("is-confirming")) {
       remove.classList.add("is-confirming");
-      remove.textContent = "Confirmar exclusão";
-      confirmTimer = setTimeout(() => { remove.classList.remove("is-confirming"); remove.textContent = "Excluir"; }, 4000);
+      remove.textContent = "Excluir mesmo?";
+      confirmTimer = setTimeout(() => { remove.classList.remove("is-confirming"); remove.textContent = "Excluir tarefa"; }, 4000);
       return;
     }
     clearTimeout(confirmTimer);
@@ -812,7 +835,7 @@ function openDrawer(task) {
       await api.del(`/tasks/${task.id}`);
       close();
       await refresh();
-      toast("Tarefa excluída.", { action: { label: "Desfazer", run: async () => {
+      toast("Excluída.", { action: { label: "Desfazer", run: async () => {
         const { id, overdue, created_at, updated_at, completed_at, ...data } = task;
         await api.post("/tasks", data);
         refresh();
@@ -823,25 +846,23 @@ function openDrawer(task) {
   });
 
   const save = h("button", { class: "btn btn--primary", type: "submit" }, "Salvar");
-  const created = new Date(task.created_at);
-  fill(form,
-    h("div", { class: "drawer__head" },
-      h("span", { class: "drawer__crumb" }, `Tarefa #${task.id}`),
-      h("button", { class: "icon-btn", type: "button", "aria-label": "Fechar", onclick: close }, icon("close"))),
+  const form = h("form", { novalidate: true },
+    h("div", { class: "drawer__top" },
+      h("span", null, `Tarefa nº ${task.id}`),
+      h("button", { class: "drawer__close", type: "button", onclick: close }, "Fechar")),
     h("div", { class: "drawer__body" },
       title,
-      field("Situação", segmented("status", [["pendente", "Pendente"], ["em_andamento", "Em andamento"], ["concluida", "Concluída"]], task.status)),
-      h("div", { class: "form__row" },
-        field("Prioridade", segmented("priority", [["baixa", "Baixa"], ["media", "Média"], ["alta", "Alta"]], task.priority)),
-        field("Prazo", h("input", { class: "input", name: "due_date", type: "date", value: task.due_date || "", "aria-label": "Prazo" }))),
-      field("Etiquetas", h("input", { class: "input", name: "tags", value: task.tags.join(", "), placeholder: "Separadas por vírgula: cliente, financeiro", "aria-label": "Etiquetas" })),
-      field("Detalhes", description),
+      h("dl", { class: "props" },
+        prop("Situação", select("status", [["pendente", "Pendente"], ["em_andamento", "Em andamento"], ["concluida", "Feita"]], task.status)),
+        prop("Prioridade", select("priority", [["alta", "Alta"], ["media", "Normal"], ["baixa", "Pode esperar"]], task.priority)),
+        prop("Prazo", h("input", { name: "due_date", type: "date", value: task.due_date || "" })),
+        prop("Etiquetas", h("input", { name: "tags", value: task.tags.map((t) => `#${t}`).join(" "), placeholder: "#cliente #contas" }))),
+      h("div", { class: "drawer__notes" }, h("label", { class: "label", for: "notes" }, "Anotações"), notes),
       error,
-      h("div", { class: "drawer__meta" },
-        h("span", null, `Criada em ${dateTime.format(created)}`),
-        task.completed_at && h("span", null, `Concluída em ${dateTime.format(new Date(task.completed_at))}`))),
-    h("div", { class: "drawer__foot" }, remove,
-      h("div", { style: "display:flex;gap:8px" }, h("button", { class: "btn btn--ghost", type: "button", onclick: close }, "Cancelar"), save)));
+      h("p", { class: "drawer__stamp" },
+        `Anotada em ${fullDate.format(new Date(task.created_at))}`,
+        task.completed_at ? `, feita em ${fullDate.format(new Date(task.completed_at))}.` : ".")),
+    h("div", { class: "drawer__foot" }, remove, save));
 
   form.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) form.requestSubmit();
@@ -849,21 +870,20 @@ function openDrawer(task) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const f = form.elements;
-    const changes = {
-      title: f.title.value.trim(),
-      description: f.description.value.trim() || null,
-      status: form.querySelector('[name="status"]:checked').value,
-      priority: form.querySelector('[name="priority"]:checked').value,
-      due_date: f.due_date.value || null,
-      tags: f.tags.value.split(",").map((t) => t.trim().replace(/^#/, "")).filter(Boolean),
-    };
     save.disabled = true;
     try {
-      await api.patch(`/tasks/${task.id}`, changes);
+      await api.patch(`/tasks/${task.id}`, {
+        title: f.title.value.trim(),
+        description: f.description.value.trim() || null,
+        status: f.status.value,
+        priority: f.priority.value,
+        due_date: f.due_date.value || null,
+        tags: f.tags.value.split(/[\s,]+/).map((t) => t.replace(/^#/, "")).filter(Boolean),
+      });
       close();
       state.highlight = task.id;
       await refresh();
-      toast("Alterações salvas.");
+      toast("Salvo.");
     } catch (err) {
       error.textContent = err.message;
       save.disabled = false;
@@ -873,6 +893,7 @@ function openDrawer(task) {
   dialog.append(form);
   document.body.append(dialog);
   dialog.showModal();
+  fit();
   title.focus();
 }
 
@@ -883,16 +904,15 @@ function openShortcuts() {
   dialog.addEventListener("close", () => dialog.remove());
   dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
   const row = (keys, text) => h("div", null, h("dt", null, text), h("dd", null, keys.map((k) => [h("kbd", null, k), " "])));
-  dialog.append(h("div", { class: "dialog__inner" },
-    h("h2", { id: "keys-title" }, "Atalhos de teclado"),
+  dialog.append(
+    h("h2", { id: "keys-title" }, "Atalhos"),
     h("dl", { class: "keys" },
-      row(["n"], "Anotar tarefa"),
-      row(["/"], "Buscar"),
-      row(["b"], "Alternar lista e quadro"),
-      row(["1", "2", "3", "4", "5"], "Trocar de visão"),
-      row(["Ctrl", "Enter"], "Salvar no painel"),
-      row(["Esc"], "Fechar painel")),
-    h("button", { class: "btn btn--ghost", type: "button", onclick: () => dialog.close() }, "Fechar")));
+      row(["n"], "Anotar"),
+      row(["/"], "Procurar"),
+      row(["b"], "Lista ou quadro"),
+      row(["1", "–", "5"], "Trocar de visão"),
+      row(["Ctrl", "Enter"], "Salvar a tarefa aberta")),
+    h("button", { class: "btn btn--plain", type: "button", onclick: () => dialog.close() }, "Fechar"));
   document.body.append(dialog);
   dialog.showModal();
 }

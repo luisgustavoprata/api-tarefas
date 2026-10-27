@@ -1,6 +1,6 @@
 [project]
 name = "api-tarefas"
-version = "1.2.0"
+version = "1.3.0"
 description = "API REST de tarefas com FastAPI, SQLAlchemy 2 e JWT."
 requires-python = ">=3.12"
 

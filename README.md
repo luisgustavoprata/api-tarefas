@@ -13,7 +13,7 @@ paginação e um resumo com as tarefas atrasadas.
 
 > **Experimente online:** **https://api-tarefas-bl8w.onrender.com**
 >
-> Clique em **Entrar na demonstração** e use como um app de tarefas. A documentação da API
+> Clique em **Abrir a conta de demonstração** e use como um app de tarefas. A documentação da API
 > fica em [`/docs`](https://api-tarefas-bl8w.onrender.com/docs) (login `demo@tarefas.dev` /
 > `demo12345`). Hospedada no plano gratuito do Render: o primeiro acesso depois de um tempo
 > parado pode levar cerca de 50 segundos.
@@ -23,24 +23,24 @@ paginação e um resumo com as tarefas atrasadas.
 ## Interface web
 
 A página inicial é um app de tarefas completo que usa a própria API (HTML, CSS e JavaScript
-puro, sem framework nem etapa de build, em `app/static/`).
+puro, sem framework nem etapa de build, em `app/static/`). O visual imita um caderno: linhas
+finas, o nome de cada grupo escrito na margem e quase nenhuma caixa ou sombra.
 
-- **Anotar do jeito que se fala.** Ao digitar `revisar contrato sexta !alta #juridico`, a
-  tarefa entra com prazo, prioridade e etiqueta, e a interpretação aparece enquanto você digita.
-  Entende `hoje`, `amanhã`, `depois de amanhã`, dias da semana, datas (`25/12`), `em 3 dias`,
-  `!alta`/`!média`/`!baixa` e `#etiqueta`.
-- **Lista organizada pelo tempo**: atrasadas, hoje, amanhã, próximos dias, mais adiante e sem
-  prazo. A cor do círculo indica a prioridade.
-- **Quadro (kanban)**: colunas Pendente, Em andamento e Concluída; arrastar um cartão muda a
-  situação da tarefa.
-- **Painel de detalhes** lateral para editar tudo; concluir e excluir têm **Desfazer**.
-- Menu com visões (A fazer, Hoje, Próximos 7 dias, Atrasadas, Concluídas), etiquetas, busca e
-  progresso. **Tema claro e escuro**, atalhos de teclado (`?` mostra a lista) e layout para celular.
+- **Anotar do jeito que se fala.** Ao digitar `levar o carro na revisão sexta !alta #carro`, a
+  tarefa entra com prazo, prioridade e etiqueta, e a interpretação aparece logo abaixo enquanto
+  você digita. Entende `hoje`, `amanhã`, `depois de amanhã`, dias da semana, datas (`25/12`),
+  `em 3 dias`, `!alta`/`!média`/`!baixa` e `#etiqueta`.
+- **Organizada pelo tempo**: atrasadas, hoje, amanhã, esta semana, mais pra frente e sem prazo.
+  A cor do círculo indica a prioridade; meio preenchido quer dizer "em andamento".
+- **Quadro**: colunas Pendente, Em andamento e Feita; arrastar muda a situação da tarefa.
+- **Ficha da tarefa** ao lado, para editar tudo; marcar como feita e excluir têm **Desfazer**.
+- O cabeçalho resume o dia numa frase ("Uma tarefa atrasada e duas para hoje."), há tema claro
+  e escuro, atalhos de teclado (`?`) e layout para celular.
 
 | Lista | Quadro |
 |---|---|
 | ![Lista](docs/interface.png) | ![Quadro](docs/quadro.png) |
-| **Entrada** | **Tema escuro e painel de detalhes** |
+| **Entrada** | **Tema escuro e ficha da tarefa** |
 | ![Entrada](docs/entrada.png) | ![Tema escuro](docs/escuro.png) |
 
 ![Documentação interativa](docs/swagger.png)
