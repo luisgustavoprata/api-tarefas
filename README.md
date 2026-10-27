@@ -11,8 +11,11 @@ API REST para organizar tarefas pessoais, feita com **FastAPI**, **SQLAlchemy 2*
 suas tarefas com prioridade, prazo e etiquetas. Há filtros combinados, busca, ordenação,
 paginação e um resumo com as tarefas atrasadas.
 
-> **Experimente:** a documentação interativa (Swagger) permite testar cada rota pelo
-> navegador. Clique em **Authorize** e entre com `demo@tarefas.dev` / `demo12345`.
+> **Experimente online:** **https://api-tarefas-bl8w.onrender.com**
+>
+> A documentação interativa (Swagger) permite testar cada rota pelo navegador. Clique em
+> **Authorize** e entre com `demo@tarefas.dev` / `demo12345`. Hospedada no plano gratuito do
+> Render: o primeiro acesso depois de um tempo parado pode levar cerca de 50 segundos.
 
 ![Documentação interativa](docs/swagger.png)
 
@@ -180,8 +183,8 @@ ruff check . && ruff format --check .
 ## Deploy no Render (gratuito)
 
 1. No [Render](https://render.com): **New → Blueprint** → escolha este repositório → **Apply**.
-2. Em alguns minutos a API fica no ar em `https://api-tarefas-xxxx.onrender.com`, já com a
-   conta de demonstração.
+2. Em alguns minutos a API fica no ar num endereço `https://api-tarefas-....onrender.com`
+   (esta está em https://api-tarefas-bl8w.onrender.com), já com a conta de demonstração.
 
 No plano gratuito, o servidor "dorme" depois de 15 minutos sem uso (o primeiro acesso leva
 cerca de 50 segundos) e o banco SQLite volta ao estado inicial. Para dados permanentes, crie um
