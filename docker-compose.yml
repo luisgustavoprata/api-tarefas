@@ -1,0 +1,29 @@
+# Sobe a API com PostgreSQL, igual à produção:  docker compose up --build
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tarefas
+      POSTGRES_PASSWORD: tarefas
+      POSTGRES_DB: tarefas
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tarefas"]
+      interval: 3s
+      retries: 10
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://tarefas:tarefas@db:5432/tarefas
+      SECRET_KEY: ${SECRET_KEY:-troque-esta-chave-em-producao}
+      SEED_DEMO: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

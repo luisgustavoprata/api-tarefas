@@ -1,0 +1,20 @@
+# Blueprint do Render (plano gratuito). Uso: New > Blueprint > este repositório.
+# Banco SQLite dentro do servidor: os dados voltam à conta de demonstração quando o
+# servidor reinicia ou "dorme". Para dados permanentes, crie um PostgreSQL no Render e
+# defina DATABASE_URL com a "Internal Database URL" dele.
+services:
+  - type: web
+    name: api-tarefas
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: SEED_DEMO
+        value: "true"
+      - key: PASSWORD_ITERATIONS
+        value: "100000"            # menor custo para a CPU limitada do plano gratuito
