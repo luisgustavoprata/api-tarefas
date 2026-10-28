@@ -171,7 +171,7 @@ const DEMO = { email: "demo@tarefas.dev", password: "demo12345" };
 const state = {
   user: null,
   view: "inbox",
-  mode: store.get("tarefas.mode") === "board" ? "board" : "list",
+  mode: "board", // ao entrar, o quadro dá a visão geral; a lista é a segunda opção
   tag: null,
   q: "",
   tasks: [],
@@ -412,6 +412,7 @@ const LANES = [["pendente", "Pendente"], ["em_andamento", "Em andamento"], ["con
 let els = {};
 
 function renderApp() {
+  Object.assign(state, { mode: "board", view: "inbox" });
   document.title = "Tarefas";
   const app = h("div", { class: "app" });
   const scrim = h("div", { class: "scrim", hidden: true });
@@ -540,7 +541,6 @@ function setView(view) {
 
 function setMode(mode) {
   state.mode = mode;
-  store.set("tarefas.mode", mode);
   drawChrome();
   loadTasks();
 }
@@ -573,10 +573,8 @@ function drawChrome() {
     late: s.overdue, done: s.by_status.concluida,
   };
   fill(els.views, Object.entries(VIEWS).map(([key, view]) => h("button", {
-    class: "view", type: "button", "aria-current": String(state.view === key && state.mode === "list"), onclick: () => {
-      if (state.mode === "board") state.mode = "list";
-      setView(key);
-    },
+    // No quadro, as visões filtram as colunas; "Feitas" abre a lista.
+    class: "view", type: "button", "aria-current": String(state.view === key), onclick: () => setView(key),
   }, h("span", null, view.label),
     counts && counts[key] ? h("span", { class: `view__n${key === "late" ? " view__n--late" : ""}` }, counts[key]) : null)));
 
@@ -592,7 +590,7 @@ function drawChrome() {
 
   els.title.textContent = state.mode === "board" ? "Quadro" : VIEWS[state.view].label;
   fill(els.line, summary(s));
-  fill(els.modes, [["list", "Lista"], ["board", "Quadro"]].map(([mode, label]) => h("button", {
+  fill(els.modes, [["board", "Quadro"], ["list", "Lista"]].map(([mode, label]) => h("button", {
     type: "button", "aria-pressed": String(state.mode === mode), onclick: () => setMode(mode),
   }, label)));
 
@@ -948,7 +946,7 @@ function openShortcuts() {
     h("dl", { class: "keys" },
       row(["n"], "Anotar"),
       row(["/"], "Procurar"),
-      row(["b"], "Lista ou quadro"),
+      row(["b"], "Quadro ou lista"),
       row(["1", "–", "5"], "Trocar de visão"),
       row(["Ctrl", "Enter"], "Salvar a tarefa aberta")),
     h("button", { class: "btn btn--plain", type: "button", onclick: () => dialog.close() }, "Fechar"));

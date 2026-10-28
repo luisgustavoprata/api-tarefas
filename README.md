@@ -18,7 +18,7 @@ paginação e um resumo com as tarefas atrasadas.
 > `demo12345`). Hospedada no plano gratuito do Render: o primeiro acesso depois de um tempo
 > parado pode levar cerca de 50 segundos.
 
-![Interface web](docs/interface.png)
+![Quadro de tarefas](docs/quadro.png)
 
 ## Interface web
 
@@ -32,7 +32,8 @@ finas, o nome de cada grupo escrito na margem e quase nenhuma caixa ou sombra.
   `em 3 dias`, `!alta`/`!média`/`!baixa` e `#etiqueta`.
 - **Organizada pelo tempo**: atrasadas, hoje, amanhã, esta semana, mais pra frente e sem prazo.
   A cor do círculo indica a prioridade; meio preenchido quer dizer "em andamento".
-- **Quadro**: colunas Pendente, Em andamento e Feita; arrastar muda a situação da tarefa.
+- **Quadro (tela inicial)**: ao entrar, as tarefas aparecem em colunas Pendente, Em andamento e
+  Feita; arrastar muda a situação. A **Lista**, organizada pelo tempo, é a segunda opção.
 - **Ficha da tarefa** ao lado, para editar tudo; marcar como feita e excluir têm **Desfazer**.
 - **Tipografia com hierarquia clara**: títulos das tarefas em caixa alta, pretos e em negrito
   (Archivo), descrições em texto corrido (Instrument Sans) e etiquetas e prazos menores.
@@ -41,9 +42,9 @@ finas, o nome de cada grupo escrito na margem e quase nenhuma caixa ou sombra.
 - O cabeçalho resume o dia numa frase ("Uma tarefa atrasada e duas para hoje."), há tema claro
   e escuro, atalhos de teclado (`?`) e layout para celular.
 
-| Lista | Quadro |
+| Quadro (tela inicial) | Lista |
 |---|---|
-| ![Lista](docs/interface.png) | ![Quadro](docs/quadro.png) |
+| ![Quadro](docs/quadro.png) | ![Lista](docs/interface.png) |
 | **Entrada** | **Tema escuro e ficha da tarefa** |
 | ![Entrada](docs/entrada.png) | ![Tema escuro](docs/escuro.png) |
 
