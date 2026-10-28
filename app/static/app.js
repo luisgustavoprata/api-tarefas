@@ -421,12 +421,11 @@ function renderApp() {
 
   /* Menu lateral: só texto, como um índice */
   els.views = h("nav", { class: "views", "aria-label": "Visões" });
-  els.tags = h("div");
   els.tally = h("div");
   const themeBtn = h("button", { class: "text-btn", type: "button", "data-theme-btn": true, onclick: toggleTheme }, themeLabel());
   const side = h("aside", { class: "side", id: "menu" },
     h("span", { class: "wordmark" }, h("img", { src: "/static/icon.svg", alt: "" }), "Tarefas"),
-    els.views, els.tags,
+    els.views,
     h("div", { class: "side__foot" },
       els.tally,
       h("p", null, state.user.name),
@@ -501,6 +500,7 @@ function renderApp() {
   });
   els.search = search;
   els.filters = h("div", { class: "filters" });
+  els.tagPicker = h("div", { class: "picker" });
   els.content = h("section", { "aria-live": "polite" });
 
   fill(app, side, scrim,
@@ -512,7 +512,7 @@ function renderApp() {
         els.modes,
         els.line),
       jotForm,
-      h("div", { class: "tools" }, search, els.filters),
+      h("div", { class: "tools" }, h("div", { class: "tools__left" }, search, els.tagPicker), els.filters),
       els.content)));
   fill(root(), app);
 
@@ -580,12 +580,7 @@ function drawChrome() {
   }, h("span", null, view.label),
     counts && counts[key] ? h("span", { class: `view__n${key === "late" ? " view__n--late" : ""}` }, counts[key]) : null)));
 
-  fill(els.tags, state.tags.length > 0 && [
-    h("p", { class: "side__label" }, "Etiquetas"),
-    h("div", { class: "tagcloud" }, state.tags.map((t) => h("button", {
-      type: "button", "aria-pressed": String(state.tag === t.name), onclick: () => setTag(t.name),
-    }, `#${t.name}`, h("small", null, t.tasks)))),
-  ]);
+  drawTagPicker();
 
   if (s) {
     const percent = Math.round(s.completion_rate * 100);
@@ -607,6 +602,50 @@ function drawChrome() {
     state.tag && h("span", null, "Só ", h("b", null, `#${state.tag}`), " ", clear(() => setTag(state.tag))),
     state.q && h("span", null, "Com ", h("b", null, `“${state.q}”`), " ", clear(() => { state.q = ""; els.search.value = ""; drawChrome(); loadTasks(); })));
 }
+
+/** Botão "Etiquetas" ao lado da busca: abre a lista com todas as etiquetas num só lugar. */
+function drawTagPicker() {
+  const wasOpen = els.tagPicker.querySelector(".picker__panel:not([hidden])") !== null;
+  const button = h("button", {
+    class: `picker__btn${state.tag ? " is-active" : ""}`, type: "button",
+    "aria-haspopup": "true", "aria-expanded": String(wasOpen), "aria-controls": "tag-panel",
+  }, state.tag ? `#${state.tag}` : "Etiquetas", h("span", { class: "picker__caret", "aria-hidden": "true" }, "▾"));
+  const panel = h("div", { class: "picker__panel", id: "tag-panel", role: "menu", hidden: !wasOpen });
+
+  const toggle = (open) => {
+    panel.hidden = !open;
+    button.setAttribute("aria-expanded", String(open));
+    if (open) panel.querySelector("button")?.focus();
+  };
+  button.addEventListener("click", () => toggle(panel.hidden));
+  panel.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") { toggle(false); button.focus(); }
+  });
+
+  const option = (label, count, active, onPick) => h("button", {
+    class: "picker__item", type: "button", role: "menuitemradio", "aria-checked": String(active),
+    onclick: () => { toggle(false); onPick(); },
+  }, h("span", null, label), count !== null && h("span", { class: "picker__n" }, count));
+
+  fill(panel, state.tags.length
+    ? [
+      option("Todas as etiquetas", null, !state.tag, () => { if (state.tag) setTag(state.tag); }),
+      state.tags.map((t) => option(`#${t.name}`, t.tasks, state.tag === t.name, () => { if (state.tag !== t.name) setTag(t.name); })),
+    ]
+    : h("p", { class: "picker__empty" }, "Nenhuma etiqueta ainda. Use #nome ao anotar uma tarefa."));
+  fill(els.tagPicker, button, panel);
+}
+
+// Fecha a lista de etiquetas ao clicar fora dela.
+document.addEventListener("click", (event) => {
+  const picker = els.tagPicker;
+  if (!picker || picker.contains(event.target)) return;
+  const panel = picker.querySelector(".picker__panel");
+  if (panel && !panel.hidden) {
+    panel.hidden = true;
+    picker.querySelector(".picker__btn")?.setAttribute("aria-expanded", "false");
+  }
+});
 
 async function refresh() {
   await Promise.all([loadTasks(), loadSide()]);

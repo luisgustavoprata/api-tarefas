@@ -37,6 +37,7 @@ finas, o nome de cada grupo escrito na margem e quase nenhuma caixa ou sombra.
 - **Tipografia com hierarquia clara**: títulos das tarefas em caixa alta, pretos e em negrito
   (Archivo), descrições em texto corrido (Instrument Sans) e etiquetas e prazos menores.
   **PRIORIDADE ALTA** aparece em vermelho com um brilho leve de neon.
+- Ao lado da busca, o botão **Etiquetas** reúne todas as etiquetas, com a contagem de tarefas, para filtrar.
 - O cabeçalho resume o dia numa frase ("Uma tarefa atrasada e duas para hoje."), há tema claro
   e escuro, atalhos de teclado (`?`) e layout para celular.
 
