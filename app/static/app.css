@@ -327,6 +327,12 @@ svg { flex: none; width: 16px; height: 16px; }
   width: 100%; border: 0; background: none; padding: 6px 0; outline: none; cursor: pointer;
 }
 .prop select:focus, .prop input:focus { box-shadow: 0 2px 0 var(--accent); }
+/* Tema escuro: alguns navegadores (Chrome no Linux/Windows) abrem a lista de opções com fundo
+   branco, mas herdam a cor clara do texto, e as opções somem. Fundo e texto explícitos resolvem. */
+:root[data-theme="dark"] select option,
+:root[data-theme="dark"] select optgroup { background-color: var(--surface); color: var(--ink); }
+:root[data-theme="dark"] select option:checked { background-color: var(--accent-soft); color: var(--accent-ink); }
+:root[data-theme="dark"] select option:disabled { color: var(--faint); }
 .drawer__notes { margin-top: 20px; display: grid; gap: 6px; }
 .drawer__notes textarea { width: 100%; min-height: 160px; resize: vertical; border: 1px solid var(--line); border-radius: 3px; background: var(--bg); padding: 10px 12px; line-height: 1.6; }
 .drawer__notes textarea:focus { outline: none; border-color: var(--accent); }
