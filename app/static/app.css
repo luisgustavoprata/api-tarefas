@@ -157,18 +157,9 @@ svg { flex: none; width: 16px; height: 16px; }
   display: flex; flex-direction: column; justify-content: center; gap: 28px;
 }
 :root[data-theme="dark"] .auth__right { background: #1b2565; }
-.auth__right p { max-width: 46ch; color: #dde2ff; font-size: 16px; }
+.auth__slogan { max-width: 22ch; text-wrap: balance; color: #fff; font-family: var(--display); font-weight: 800; font-size: clamp(32px, 3.4vw, 52px); line-height: 1.1; letter-spacing: -0.02em; }
 
 /* Prévia do quadro na entrada (sempre clara, sobre o azul) */
-.mini { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; max-width: 620px; }
-.mini__lane { background: rgba(255, 255, 255, 0.12); border-radius: 4px; padding: 10px; display: grid; gap: 8px; align-content: start; }
-.mini__head { font-family: var(--display); font-weight: 700; font-size: 13px; color: #fff; }
-.mini__card { background: #fff; color: #141a26; border-radius: 3px; padding: 9px 10px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 8px; }
-.mini__pip { width: 7px; height: 7px; border-radius: 50%; margin-top: 6px; }
-.mini__title { font-family: var(--display); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.3; color: #000; }
-.mini__meta { grid-column: 2; display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 11px; color: #5e6a7d; }
-.mini__meta .hi { font-size: 10px; color: #d4443c; text-shadow: 0 0 5px rgba(212, 68, 60, 0.38); }
-.mini__meta .tag { color: #3346d3; }
 /* ---------- Estrutura do app ---------- */
 
 .app { display: grid; grid-template-columns: clamp(210px, 15vw, 280px) minmax(0, 1fr); min-height: 100vh; }

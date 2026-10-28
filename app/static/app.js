@@ -219,27 +219,6 @@ const root = () => document.getElementById("root");
 const WORDS = ["nenhuma", "uma", "duas", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"];
 const word = (n) => WORDS[n] ?? String(n);
 
-/** Prévia estática do quadro na tela de entrada: mostra o produto sem precisar entrar. */
-function boardPreview() {
-  const card = (title, meta, color, late) => h("div", { class: "mini__card" },
-    h("span", { class: "mini__pip", style: `background:${color}` }),
-    h("span", { class: "mini__title" }, title),
-    h("span", { class: "mini__meta" }, meta.map(([text, kind]) => h("span", { class: kind || null }, text))));
-  const lane = (name, cards) => h("div", { class: "mini__lane" }, h("p", { class: "mini__head" }, name), cards);
-  const friday = dueLabel(toISO(addDays(today(), (5 - today().getDay() + 7) % 7 || 7))).text.toLowerCase();
-  return h("div", { class: "mini", "aria-hidden": "true" },
-    lane("Pendente", [
-      card("Pagar o boleto da internet", [[friday], ["Prioridade alta", "hi"], ["#contas", "tag"]], "#d4443c"),
-      card("Atualizar o currículo", [["#carreira", "tag"]], "#c08108"),
-    ]),
-    lane("Em andamento", [
-      card("Preparar a apresentação", [["hoje"], ["Prioridade alta", "hi"]], "#d4443c"),
-    ]),
-    lane("Feita", [
-      card("Renovar a CNH", [["#pessoal", "tag"]], "#cfd6e2"),
-    ]));
-}
-
 function themeLabel() {
   return isDark() ? "Tema claro" : "Tema escuro";
 }
@@ -309,9 +288,8 @@ function renderAuth(mode = "login") {
         isLogin && h("div", { class: "auth__or" }, h("span", null, "ou entre com a sua conta")),
         form),
       h("p", { class: "auth__foot" }, "Feito por Luis Gustavo Prata. É também uma API REST: ", h("a", { href: "/docs" }, "documentação"), ".")),
-    h("section", { class: "auth__right", "aria-label": "Como funciona" },
-      h("p", null, "Tudo o que precisa ser feito num quadro só: o que falta começar, o que está andando e o que já foi. O mais urgente aparece em vermelho."),
-      boardPreview())));
+    h("section", { class: "auth__right", "aria-label": "Sobre o site" },
+      h("p", { class: "auth__slogan" }, "Organize o seu dia,", h("br"), "uma tarefa de cada vez."))));
 }
 
 /* ===================== 4. App ===================== */
