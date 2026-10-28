@@ -26,10 +26,9 @@ A página inicial é um app de tarefas completo que usa a própria API (HTML, CS
 puro, sem framework nem etapa de build, em `app/static/`). O visual imita um caderno: linhas
 finas, o nome de cada grupo escrito na margem e quase nenhuma caixa ou sombra.
 
-- **Anotar do jeito que se fala.** Ao digitar `levar o carro na revisão sexta !alta #carro`, a
-  tarefa entra com prazo, prioridade e etiqueta, e a interpretação aparece logo abaixo enquanto
-  você digita. Entende `hoje`, `amanhã`, `depois de amanhã`, dias da semana, datas (`25/12`),
-  `em 3 dias`, `!alta`/`!média`/`!baixa` e `#etiqueta`.
+- **Botão Adicionar**: abre a ficha da tarefa em branco, com o título e campos claros para
+  **Situação**, **Prioridade** (baixa, normal ou alta), **Prazo** (calendário), **Etiquetas** e
+  **Anotações**. O atalho `n` faz o mesmo.
 - **Organizada pelo tempo**: atrasadas, hoje, amanhã, esta semana, mais pra frente e sem prazo.
   A cor do círculo indica a prioridade; meio preenchido quer dizer "em andamento".
 - **Quadro (tela inicial)**: ao entrar, as tarefas aparecem em colunas Pendente, Em andamento e
@@ -59,7 +58,7 @@ finas, o nome de cada grupo escrito na margem e quase nenhuma caixa ou sombra.
 | Banco de dados | SQLAlchemy 2 com ORM tipado (`Mapped`), relacionamento muitos-para-muitos (tarefas ↔ etiquetas), exclusão em cascata |
 | Segurança | Senhas com PBKDF2 + sal, JWT com expiração, limite de tentativas de login, resposta igual para e-mail inexistente e senha errada (não revela quem tem conta), isolamento total entre usuários |
 | Qualidade | 50 testes com pytest, rodando no SQLite **e no PostgreSQL** a cada push (GitHub Actions), lint e formatação com Ruff |
-| Front-end | Interface em JavaScript puro que consome a API: leitura de linguagem natural, quadro kanban com arrastar e soltar, tema escuro, responsiva e acessível por teclado |
+| Front-end | Interface em JavaScript puro que consome a API: ficha de criação e edição, quadro kanban com arrastar e soltar, tema escuro, responsiva e acessível por teclado |
 | Entrega | Docker, docker-compose com PostgreSQL e deploy no Render a partir de um arquivo (`render.yaml`) |
 
 ## Rotas

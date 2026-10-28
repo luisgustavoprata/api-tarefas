@@ -2,9 +2,8 @@
  *
  * 1. Utilitários (DOM, ícones, datas)
  * 2. Cliente da API, sessão e tema
- * 3. Leitura da frase digitada ("pagar luz sexta !alta #casa")
- * 4. Tela de entrada (com o exemplo sendo digitado)
- * 5. App: índice lateral, cabeçalho, anotar, lista em forma de caderno, quadro, ficha da tarefa
+ * 3. Tela de entrada (com uma prévia do quadro)
+ * 4. App: índice lateral, cabeçalho, quadro, lista em forma de caderno, ficha da tarefa
  *
  * Todo texto vindo da API entra no DOM como texto (nunca innerHTML), o que impede XSS.
  */
@@ -212,59 +211,7 @@ function toast(message, { tone = "ok", action } = {}) {
   setTimeout(() => el.remove(), action ? 6000 : 3500);
 }
 
-/* ===================== 3. Leitura da frase ===================== */
-
-const WEEKDAY_WORDS = { domingo: 0, segunda: 1, terca: 2, "terça": 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6, "sábado": 6 };
-const END = "(?=\\s|$|[.,;])";
-const START = "(^|\\s)";
-
-/**
- * "pagar luz sexta !alta #casa #contas" →
- * { title: "pagar luz", due_date: "2030-01-11", priority: "alta", tags: ["casa", "contas"] }
- */
-function parseQuick(text, base = today()) {
-  let rest = ` ${text} `;
-  const result = { tags: [] };
-  const take = (regex, onMatch) => {
-    // Se onMatch devolver false, o trecho fica no título (ex.: "31/02" não é data).
-    rest = rest.replace(regex, (...m) => (onMatch(m) === false ? m[0] : " "));
-  };
-
-  take(new RegExp(`${START}#([\\p{L}\\p{N}_-]{1,30})${END}`, "giu"), (m) => {
-    const tag = m[2].toLowerCase();
-    if (!result.tags.includes(tag) && result.tags.length < 10) result.tags.push(tag);
-  });
-  take(new RegExp(`${START}!(alta|m[eé]dia|baixa)?${END}`, "iu"), (m) => {
-    const word = (m[2] || "alta").toLowerCase();
-    result.priority = word.startsWith("m") ? "media" : word;
-  });
-
-  const setDate = (d) => { if (!result.due_date) result.due_date = toISO(d); };
-  const prep = "(?:(?:para|pra|até|ate|na|no|em)\\s+)?";
-  take(new RegExp(`${START}${prep}depois de amanh[ãa]${END}`, "iu"), () => setDate(addDays(base, 2)));
-  take(new RegExp(`${START}${prep}amanh[ãa]${END}`, "iu"), () => setDate(addDays(base, 1)));
-  take(new RegExp(`${START}${prep}hoje${END}`, "iu"), () => setDate(base));
-  take(new RegExp(`${START}(?:em|daqui a)\\s+(\\d{1,3})\\s+dias?${END}`, "iu"), (m) => setDate(addDays(base, Number(m[2]))));
-  take(new RegExp(`${START}${prep}(\\d{1,2})/(\\d{1,2})(?:/(\\d{2,4}))?${END}`, "u"), (m) => {
-    const [day, month] = [Number(m[2]), Number(m[3])];
-    let year = m[4] ? Number(m[4].length === 2 ? `20${m[4]}` : m[4]) : base.getFullYear();
-    let date = new Date(year, month - 1, day);
-    if (month < 1 || month > 12 || date.getMonth() !== month - 1) return false;
-    if (!m[4] && date < base) date = new Date(++year, month - 1, day);
-    setDate(date);
-  });
-  take(new RegExp(`${START}${prep}(segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|domingo)(?:-feira)?${END}`, "iu"), (m) => {
-    const target = WEEKDAY_WORDS[m[2].toLowerCase()];
-    let diff = (target - base.getDay() + 7) % 7;
-    if (diff === 0) diff = 7; // "sexta" dita numa sexta = a próxima
-    setDate(addDays(base, diff));
-  });
-
-  result.title = rest.replace(/\s+/g, " ").trim();
-  return result;
-}
-
-/* ===================== 4. Entrada ===================== */
+/* ===================== 3. Entrada ===================== */
 
 const root = () => document.getElementById("root");
 
@@ -272,53 +219,25 @@ const root = () => document.getElementById("root");
 const WORDS = ["nenhuma", "uma", "duas", "três", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"];
 const word = (n) => WORDS[n] ?? String(n);
 
-const EXAMPLES = [
-  "levar o carro na revisão sexta !alta #carro",
-  "ligar pro contador amanhã #contas",
-  "mandar o orçamento hoje !alta #cliente",
-  "comprar ração em 3 dias #casa",
-];
-
-function exampleResult(text) {
-  const parsed = parseQuick(text);
-  const due = dueLabel(parsed.due_date);
-  return h("div", { class: "sheet__result" },
-    h("span", { class: "sheet__dot", style: parsed.priority === "alta" ? null : "border-color:#c08108" }),
-    h("span", { class: "sheet__title" }, capitalize(parsed.title)),
-    h("span", { class: "sheet__due" }, due ? due.text : ""),
-    h("span", { class: "sheet__meta" },
-      parsed.priority === "alta" && h("span", { class: "hi" }, "prioridade alta"),
-      parsed.tags.map((t) => h("span", { class: "tag" }, `#${t}`))));
-}
-
-/** A frase sendo escrita, letra por letra, e a tarefa que sai dela. */
-function playExamples(lineEl, resultSlot) {
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let index = 0;
-  const caret = h("span", { class: "sheet__caret" });
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  async function loop() {
-    while (lineEl.isConnected) {
-      const text = EXAMPLES[index % EXAMPLES.length];
-      const result = exampleResult(text);
-      fill(resultSlot, result);
-      if (reduce) {
-        fill(lineEl, text);
-        result.classList.add("is-shown");
-        return;
-      }
-      for (let i = 1; i <= text.length && lineEl.isConnected; i += 1) {
-        fill(lineEl, text.slice(0, i), caret);
-        await wait(38 + Math.random() * 50); // ritmo irregular, como alguém digitando
-      }
-      await wait(500);
-      result.classList.add("is-shown");
-      await wait(2800);
-      index += 1;
-    }
-  }
-  loop();
+/** Prévia estática do quadro na tela de entrada: mostra o produto sem precisar entrar. */
+function boardPreview() {
+  const card = (title, meta, color, late) => h("div", { class: "mini__card" },
+    h("span", { class: "mini__pip", style: `background:${color}` }),
+    h("span", { class: "mini__title" }, title),
+    h("span", { class: "mini__meta" }, meta.map(([text, kind]) => h("span", { class: kind || null }, text))));
+  const lane = (name, cards) => h("div", { class: "mini__lane" }, h("p", { class: "mini__head" }, name), cards);
+  const friday = dueLabel(toISO(addDays(today(), (5 - today().getDay() + 7) % 7 || 7))).text.toLowerCase();
+  return h("div", { class: "mini", "aria-hidden": "true" },
+    lane("Pendente", [
+      card("Pagar o boleto da internet", [[friday], ["Prioridade alta", "hi"], ["#contas", "tag"]], "#d4443c"),
+      card("Atualizar o currículo", [["#carreira", "tag"]], "#c08108"),
+    ]),
+    lane("Em andamento", [
+      card("Preparar a apresentação", [["hoje"], ["Prioridade alta", "hi"]], "#d4443c"),
+    ]),
+    lane("Feita", [
+      card("Renovar a CNH", [["#pessoal", "tag"]], "#cfd6e2"),
+    ]));
 }
 
 function themeLabel() {
@@ -368,8 +287,6 @@ function renderAuth(mode = "login") {
   });
 
   const themeBtn = h("button", { class: "text-btn", type: "button", "data-theme-btn": true, onclick: toggleTheme }, themeLabel());
-  const line = h("div", { class: "sheet__line", "aria-hidden": "true" });
-  const resultSlot = h("div", { "aria-hidden": "true" });
 
   fill(root(), h("div", { class: "auth" },
     h("main", { class: "auth__left" },
@@ -385,16 +302,11 @@ function renderAuth(mode = "login") {
           h("button", { class: "link", type: "button", onclick: () => renderAuth(isLogin ? "register" : "login") }, isLogin ? "Criar uma" : "Entrar"))),
       h("p", { class: "auth__foot" }, "Feito por Luis Gustavo Prata. É também uma API REST: ", h("a", { href: "/docs" }, "documentação"), ".")),
     h("section", { class: "auth__right", "aria-label": "Como funciona" },
-      h("p", null, "Você escreve a tarefa como anotaria num papel. O prazo, a prioridade e as etiquetas saem da própria frase."),
-      h("div", { class: "sheet" }, line, resultSlot),
-      h("div", { class: "sheet__legend" },
-        h("span", null, h("b", null, "amanhã, sexta, 25/12"), " viram prazo"),
-        h("span", null, h("b", null, "!alta"), " vira prioridade"),
-        h("span", null, h("b", null, "#casa"), " vira etiqueta")))));
-  playExamples(line, resultSlot);
+      h("p", null, "Tudo o que precisa ser feito num quadro só: o que falta começar, o que está andando e o que já foi. O mais urgente aparece em vermelho."),
+      boardPreview())));
 }
 
-/* ===================== 5. App ===================== */
+/* ===================== 4. App ===================== */
 
 const VIEWS = {
   inbox: { label: "A fazer", params: () => ({ status: ["pendente", "em_andamento"] }) },
@@ -441,56 +353,10 @@ function renderApp() {
   els.line = h("p", { class: "head__line" });
   els.modes = h("div", { class: "modes", role: "group", "aria-label": "Forma de ver" });
 
-  /* Anotar */
-  const jot = h("input", {
-    class: "jot__input", id: "jot", autocomplete: "off", maxlength: "200", "aria-label": "Nova tarefa",
-    placeholder: "O que precisa ser feito?",
-  });
-  const hint = h("p", { class: "jot__hint", "aria-live": "polite" });
-  const add = h("button", { class: "btn btn--primary", type: "submit" }, "Anotar");
-  const jotForm = h("form", { class: "jot", autocomplete: "off" }, h("div", { class: "jot__row" }, jot, add), hint);
-
-  function drawHint() {
-    if (!jot.value.trim()) {
-      fill(hint, h("span", null, "Por exemplo: ", h("em", null, "levar o carro na revisão sexta !alta #carro")));
-      return;
-    }
-    const parsed = parseQuick(jot.value);
-    const due = dueLabel(parsed.due_date);
-    fill(hint,
-      h("span", null, h("span", { class: "k" }, "Prazo "), h("span", { class: "v" }, due ? due.text.toLowerCase() : "sem prazo")),
-      h("span", null, h("span", { class: "k" }, "Prioridade "),
-        h("span", { class: `v${parsed.priority === "alta" ? " hi" : ""}` }, (PRIORITY_LABEL[parsed.priority] || "Média").toLowerCase())),
-      parsed.tags.length > 0 && h("span", null, h("span", { class: "k" }, "Etiquetas "),
-        parsed.tags.map((t) => h("span", { class: "v tag" }, `#${t} `))),
-      !parsed.title && h("span", { class: "v hi" }, "falta dizer o que fazer"));
-  }
-  jot.addEventListener("input", drawHint);
-  drawHint();
-
-  jotForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const parsed = parseQuick(jot.value);
-    if (!parsed.title) { jot.focus(); return; }
-    add.disabled = true;
-    try {
-      const task = await api.post("/tasks", {
-        title: capitalize(parsed.title), due_date: parsed.due_date || null,
-        priority: parsed.priority || "media", tags: parsed.tags,
-      });
-      jot.value = "";
-      drawHint();
-      state.highlight = task.id;
-      if (state.view === "done" || state.view === "late") state.view = "inbox";
-      await refresh();
-      toast("Anotada.");
-    } catch (err) {
-      toast(err.message, { tone: "error" });
-    } finally {
-      add.disabled = false;
-      jot.focus();
-    }
-  });
+  /* Adicionar: abre a ficha em branco, onde se escolhe prazo, prioridade e etiquetas */
+  const add = h("button", { class: "btn btn--primary add-btn", type: "button", onclick: () => openDrawer() },
+    h("span", { "aria-hidden": "true" }, "+"), "Adicionar");
+  els.add = add;
 
   /* Busca e filtros */
   const search = h("input", { class: "search", type: "search", placeholder: "Procurar…", "aria-label": "Procurar tarefas", value: state.q });
@@ -512,15 +378,14 @@ function renderApp() {
         h("div", { class: "head__title" }, els.title, h("span", { class: "head__date" }, longDate.format(new Date()))),
         els.modes,
         els.line),
-      jotForm,
-      h("div", { class: "tools" }, h("div", { class: "tools__left" }, search, els.tagPicker), els.filters),
+      h("div", { class: "tools" }, h("div", { class: "tools__left" }, add, search, els.tagPicker), els.filters),
       els.content)));
   fill(root(), app);
 
   document.onkeydown = (event) => {
     if (event.target.closest("input, textarea, select, dialog") || event.metaKey || event.ctrlKey || event.altKey) return;
     const keys = {
-      n: () => jot.focus(), "/": () => search.focus(), b: () => setMode(state.mode === "board" ? "list" : "board"), "?": openShortcuts,
+      n: () => openDrawer(), "/": () => search.focus(), b: () => setMode(state.mode === "board" ? "list" : "board"), "?": openShortcuts,
       1: () => setView("inbox"), 2: () => setView("today"), 3: () => setView("week"), 4: () => setView("late"), 5: () => setView("done"),
     };
     if (keys[event.key]) { event.preventDefault(); keys[event.key](); }
@@ -528,7 +393,7 @@ function renderApp() {
 
   drawChrome();
   refresh();
-  jot.focus();
+  add.focus();
 }
 
 function setView(view) {
@@ -559,7 +424,7 @@ function summary(s) {
   const late = s.overdue;
   const due = s.due_today;
   const lateText = h("span", { class: "late" }, `${capitalize(word(late))} ${late === 1 ? "tarefa atrasada" : "tarefas atrasadas"}`);
-  if (!open) return ["Nada pendente. Quando lembrar de algo, é só anotar."];
+  if (!open) return ["Nada pendente. Quando lembrar de algo, é só clicar em Adicionar."];
   if (late && due) return [lateText, ` e ${word(due)} para hoje.`];
   if (late) return [lateText, ". O resto está em dia."];
   if (due) return [`${capitalize(word(due))} para hoje, ${word(open)} em aberto no total.`];
@@ -630,7 +495,7 @@ function drawTagPicker() {
       option("Todas as etiquetas", null, !state.tag, () => { if (state.tag) setTag(state.tag); }),
       state.tags.map((t) => option(`#${t.name}`, t.tasks, state.tag === t.name, () => { if (state.tag !== t.name) setTag(t.name); })),
     ]
-    : h("p", { class: "picker__empty" }, "Nenhuma etiqueta ainda. Use #nome ao anotar uma tarefa."));
+    : h("p", { class: "picker__empty" }, "Nenhuma etiqueta ainda. Coloque etiquetas ao adicionar ou editar uma tarefa."));
   fill(els.tagPicker, button, panel);
 }
 
@@ -704,8 +569,8 @@ function groupTasks(tasks) {
 }
 
 const QUIET = {
-  inbox: ["Nada pendente", "Quando lembrar de algo, é só anotar ali em cima."],
-  today: ["Nada para hoje", "Escreva “hoje” ao anotar para a tarefa aparecer aqui."],
+  inbox: ["Nada pendente", "Quando lembrar de algo, é só clicar em Adicionar."],
+  today: ["Nada para hoje", "Tarefas com prazo para hoje aparecem aqui."],
   week: ["Semana livre", "Nenhuma tarefa vence nos próximos sete dias."],
   late: ["Nada atrasado", "Tudo o que tem prazo está em dia."],
   done: ["Nada feito ainda", "Marque o círculo de uma tarefa quando terminar."],
@@ -836,8 +701,17 @@ function boardNote(task) {
 
 const fullDate = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
-function openDrawer(task) {
-  const dialog = h("dialog", { class: "drawer", "aria-label": "Tarefa" });
+/** Ficha da tarefa. Sem argumento, abre em branco para adicionar uma tarefa nova. */
+function openDrawer(task = null) {
+  const isNew = task === null;
+  if (isNew) {
+    // Começa com o que faz sentido para a tela atual: prazo de hoje na visão "Hoje", etiqueta do filtro.
+    task = {
+      title: "", description: null, status: "pendente", priority: "media", tags: state.tag ? [state.tag] : [],
+      due_date: state.view === "today" ? toISO(today()) : null,
+    };
+  }
+  const dialog = h("dialog", { class: "drawer", "aria-label": isNew ? "Nova tarefa" : "Tarefa" });
   const close = () => dialog.close();
   dialog.addEventListener("close", () => dialog.remove());
   dialog.addEventListener("click", (event) => { if (event.target === dialog) close(); });
@@ -847,9 +721,16 @@ function openDrawer(task) {
   const prop = (label, control) => h("div", { class: "prop" }, h("dt", null, label), h("dd", null, control));
 
   // Título em área de texto para quebrar linha em títulos longos; Enter salva em vez de pular linha.
-  const title = h("textarea", { class: "drawer__title", name: "title", rows: "1", maxlength: "120", "aria-label": "Título" });
+  const title = h("textarea", {
+    class: "drawer__title", name: "title", rows: "1", maxlength: "120", "aria-label": "Título",
+    placeholder: "Título da tarefa",
+  });
   title.value = task.title;
-  const fit = () => { title.style.height = "auto"; title.style.height = `${title.scrollHeight}px`; };
+  // A altura acompanha o texto (soma a borda de baixo, que o scrollHeight não inclui).
+  const fit = () => {
+    title.style.height = "auto";
+    title.style.height = `${title.scrollHeight + (title.offsetHeight - title.clientHeight)}px`;
+  };
   title.addEventListener("input", fit);
   title.addEventListener("keydown", (event) => {
     if (event.key === "Enter") { event.preventDefault(); title.form.requestSubmit(); }
@@ -858,9 +739,11 @@ function openDrawer(task) {
   notes.value = task.description || "";
   const error = h("p", { class: "error", role: "alert" });
 
-  const remove = h("button", { class: "btn btn--danger", type: "button" }, "Excluir tarefa");
+  const remove = isNew
+    ? h("button", { class: "btn btn--plain", type: "button", onclick: () => dialog.close() }, "Cancelar")
+    : h("button", { class: "btn btn--danger", type: "button" }, "Excluir tarefa");
   let confirmTimer;
-  remove.addEventListener("click", async () => {
+  if (!isNew) remove.addEventListener("click", async () => {
     if (!remove.classList.contains("is-confirming")) {
       remove.classList.add("is-confirming");
       remove.textContent = "Excluir mesmo?";
@@ -882,10 +765,10 @@ function openDrawer(task) {
     }
   });
 
-  const save = h("button", { class: "btn btn--primary", type: "submit" }, "Salvar");
+  const save = h("button", { class: "btn btn--primary", type: "submit" }, isNew ? "Adicionar" : "Salvar");
   const form = h("form", { novalidate: true },
     h("div", { class: "drawer__top" },
-      h("span", null, `Tarefa nº ${task.id}`),
+      h("span", null, isNew ? "Nova tarefa" : `Tarefa nº ${task.id}`),
       h("button", { class: "drawer__close", type: "button", onclick: close }, "Fechar")),
     h("div", { class: "drawer__body" },
       title,
@@ -896,8 +779,8 @@ function openDrawer(task) {
         prop("Etiquetas", h("input", { name: "tags", value: task.tags.map((t) => `#${t}`).join(" "), placeholder: "#cliente #contas" }))),
       h("div", { class: "drawer__notes" }, h("label", { class: "label", for: "notes" }, "Anotações"), notes),
       error,
-      h("p", { class: "drawer__stamp" },
-        `Anotada em ${fullDate.format(new Date(task.created_at))}`,
+      !isNew && h("p", { class: "drawer__stamp" },
+        `Criada em ${fullDate.format(new Date(task.created_at))}`,
         task.completed_at ? `, feita em ${fullDate.format(new Date(task.completed_at))}.` : ".")),
     h("div", { class: "drawer__foot" }, remove, save));
 
@@ -907,20 +790,27 @@ function openDrawer(task) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const f = form.elements;
+    const data = {
+      title: f.title.value.trim(),
+      description: f.description.value.trim() || null,
+      status: f.status.value,
+      priority: f.priority.value,
+      due_date: f.due_date.value || null,
+      tags: f.tags.value.split(/[\s,]+/).map((t) => t.replace(/^#/, "")).filter(Boolean),
+    };
+    if (!data.title) {
+      error.textContent = "Escreva o que precisa ser feito.";
+      title.focus();
+      return;
+    }
     save.disabled = true;
     try {
-      await api.patch(`/tasks/${task.id}`, {
-        title: f.title.value.trim(),
-        description: f.description.value.trim() || null,
-        status: f.status.value,
-        priority: f.priority.value,
-        due_date: f.due_date.value || null,
-        tags: f.tags.value.split(/[\s,]+/).map((t) => t.replace(/^#/, "")).filter(Boolean),
-      });
+      const saved = isNew ? await api.post("/tasks", data) : await api.patch(`/tasks/${task.id}`, data);
       close();
-      state.highlight = task.id;
+      state.highlight = saved.id;
+      if (isNew && state.view === "done" && data.status !== "concluida") state.view = "inbox";
       await refresh();
-      toast("Salvo.");
+      toast(isNew ? "Tarefa adicionada." : "Salvo.");
     } catch (err) {
       error.textContent = err.message;
       save.disabled = false;
@@ -944,7 +834,7 @@ function openShortcuts() {
   dialog.append(
     h("h2", { id: "keys-title" }, "Atalhos"),
     h("dl", { class: "keys" },
-      row(["n"], "Anotar"),
+      row(["n"], "Adicionar tarefa"),
       row(["/"], "Procurar"),
       row(["b"], "Quadro ou lista"),
       row(["1", "–", "5"], "Trocar de visão"),
