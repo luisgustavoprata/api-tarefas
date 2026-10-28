@@ -157,6 +157,28 @@ svg { flex: none; width: 16px; height: 16px; }
   display: flex; flex-direction: column; justify-content: center; gap: 28px;
 }
 :root[data-theme="dark"] .auth__right { background: #1b2565; }
+
+/* Marca Argentum Software no canto inferior direito */
+.auth { position: relative; }
+.argentum {
+  position: absolute; right: clamp(20px, 3vw, 40px); bottom: clamp(20px, 3vw, 36px);
+  display: inline-flex; align-items: center; gap: 12px; padding: 12px 18px 12px 12px;
+  border-radius: 12px; font-family: "Space Grotesk", var(--text);
+  /* versão clara */
+  background: #ffffff; border: 1px solid #dce2e7; color: #0e1a24;
+  box-shadow: 0 6px 20px rgba(14, 26, 36, 0.18);
+}
+.argentum__icon { width: 40px; height: 40px; flex: none; }
+.argentum__tile { fill: #0e1a24; }
+.argentum__leg { fill: #ffffff; }
+.argentum__pixel { fill: #3fd8c2; }
+.argentum__words { display: grid; gap: 3px; }
+.argentum__name { font-size: 25px; font-weight: 700; letter-spacing: -0.05em; line-height: 0.9; }
+.argentum__sub { font-size: 8.5px; font-weight: 500; letter-spacing: 0.42em; line-height: 1; color: #0e7c6e; padding-left: 1px; }
+/* versão escura: sem o quadrado, o A fica direto no fundo grafite */
+:root[data-theme="dark"] .argentum { background: #0e1a24; border-color: #22313f; color: #ffffff; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
+:root[data-theme="dark"] .argentum__tile { fill: none; }
+:root[data-theme="dark"] .argentum__sub { color: #3fd8c2; }
 .auth__slogan { max-width: 22ch; text-wrap: balance; color: #fff; font-family: var(--display); font-weight: 800; font-size: clamp(32px, 3.4vw, 52px); line-height: 1.1; letter-spacing: -0.02em; }
 
 /* Prévia do quadro na entrada (sempre clara, sobre o azul) */
@@ -381,8 +403,9 @@ kbd { font-family: var(--text); font-size: 12px; font-weight: 600; padding: 0 5p
 }
 
 @media (max-width: 860px) {
-  .auth { grid-template-columns: minmax(0, 1fr); }
+  .auth { grid-template-columns: minmax(0, 1fr); background: var(--panel); }
   .auth__right { display: none; }
+  .argentum { position: static; justify-self: end; margin: 0 20px 20px; }
   .app { grid-template-columns: minmax(0, 1fr); }
   .side {
     position: fixed; inset: 0 auto 0 0; width: min(280px, 84vw); z-index: 40; background: var(--panel);

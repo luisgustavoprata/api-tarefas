@@ -223,6 +223,30 @@ function themeLabel() {
   return isDark() ? "Tema claro" : "Tema escuro";
 }
 
+/**
+ * Marca da Argentum Software no canto da tela de entrada. Tema claro usa a versão clara
+ * (fundo branco, letras escuras); tema escuro, a versão escura (fundo grafite, letras brancas).
+ */
+function argentumMark() {
+  const svg = (tag, attrs) => {
+    const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+    return node;
+  };
+  const icon = svg("svg", { viewBox: "0 0 64 64", class: "argentum__icon", "aria-hidden": "true" });
+  icon.append(
+    svg("rect", { class: "argentum__tile", x: 0, y: 0, width: 64, height: 64, rx: 15 }),
+    svg("polygon", { class: "argentum__leg", points: "10,54 25,12 33,12 19,54" }),
+    svg("polygon", { class: "argentum__leg", points: "36,24 44,24 54,54 46,54" }),
+    svg("rect", { class: "argentum__pixel", x: 37, y: 10, width: 9, height: 9, rx: 1.5 }),
+  );
+  return h("div", { class: "argentum", role: "img", "aria-label": "Argentum Software" },
+    icon,
+    h("span", { class: "argentum__words", "aria-hidden": "true" },
+      h("span", { class: "argentum__name" }, "Argentum"),
+      h("span", { class: "argentum__sub" }, "SOFTWARE")));
+}
+
 function renderAuth(mode = "login") {
   document.title = "Entrar | Tarefas";
   const isLogin = mode === "login";
@@ -289,7 +313,8 @@ function renderAuth(mode = "login") {
         form),
       h("p", { class: "auth__foot" }, "Feito por Luis Gustavo Prata. É também uma API REST: ", h("a", { href: "/docs" }, "documentação"), ".")),
     h("section", { class: "auth__right", "aria-label": "Sobre o site" },
-      h("p", { class: "auth__slogan" }, "Organize o seu dia,", h("br"), "uma tarefa de cada vez."))));
+      h("p", { class: "auth__slogan" }, "Organize o seu dia,", h("br"), "uma tarefa de cada vez.")),
+    argentumMark()));
 }
 
 /* ===================== 4. App ===================== */
