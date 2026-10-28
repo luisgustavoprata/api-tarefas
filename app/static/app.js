@@ -249,7 +249,8 @@ function renderAuth(mode = "login") {
   const isLogin = mode === "login";
   const error = h("p", { class: "error", role: "alert" });
 
-  const demo = h("button", { class: "btn btn--plain", type: "button" }, "Abrir a conta de demonstração");
+  const DEMO_LABEL = "Entrar na demonstração";
+  const demo = h("button", { class: "btn btn--primary auth__big", type: "button" }, DEMO_LABEL);
   demo.addEventListener("click", async () => {
     demo.disabled = true;
     demo.textContent = "Abrindo…";
@@ -258,18 +259,19 @@ function renderAuth(mode = "login") {
     } catch (err) {
       error.textContent = err.message;
       demo.disabled = false;
-      demo.textContent = "Abrir a conta de demonstração";
+      demo.textContent = DEMO_LABEL;
     }
   });
 
-  const input = (label, attrs) => h("label", null, h("span", { class: "label" }, label), h("input", { class: "input", required: true, ...attrs }));
-  const form = h("form", { class: "form", novalidate: true },
+  const input = (label, attrs) => h("label", null, h("span", { class: "auth__label" }, label), h("input", { class: "input auth__input", required: true, ...attrs }));
+  const form = h("form", { class: "form auth__fields", novalidate: true },
     !isLogin && input("Como quer ser chamado", { name: "name", autocomplete: "name" }),
     input("E-mail", { name: "email", type: "email", autocomplete: "email" }),
     input("Senha", { name: "password", type: "password", autocomplete: isLogin ? "current-password" : "new-password" }),
     !isLogin && h("p", { class: "auth__note" }, "A senha precisa de pelo menos 8 caracteres."),
     error,
-    h("div", null, h("button", { class: "btn btn--primary", type: "submit" }, isLogin ? "Entrar" : "Criar a conta")));
+    // No login, o destaque é da demonstração; o botão da conta fica discreto, como no modelo.
+    h("button", { class: `btn auth__big ${isLogin ? "btn--plain auth__soft" : "btn--primary"}`, type: "submit" }, isLogin ? "Entrar" : "Criar a conta"));
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -286,6 +288,12 @@ function renderAuth(mode = "login") {
     }
   });
 
+  const tab = (name, label) => h("button", {
+    class: "auth__tab", type: "button", role: "tab", "aria-selected": String(mode === name),
+    onclick: () => mode !== name && renderAuth(name),
+  }, label);
+  const tabs = h("div", { class: "auth__tabs", role: "tablist" }, tab("login", "Entrar"), tab("register", "Criar conta"));
+
   const themeBtn = h("button", { class: "text-btn", type: "button", "data-theme-btn": true, onclick: toggleTheme }, themeLabel());
 
   fill(root(), h("div", { class: "auth" },
@@ -293,13 +301,13 @@ function renderAuth(mode = "login") {
       h("div", { class: "auth__top" },
         h("span", { class: "wordmark" }, h("img", { src: "/static/icon.svg", alt: "" }), "Tarefas"), themeBtn),
       h("div", { class: "auth__form" },
-        h("h1", { class: "auth__title" }, isLogin ? "Entrar" : "Criar conta"),
+        h("h1", { class: "auth__title" }, isLogin ? "Entrar na sua conta" : "Criar sua conta"),
+        tabs,
         isLogin && h("div", { class: "auth__demo" },
-          h("p", { class: "auth__note" }, "Só quer dar uma olhada? A conta de demonstração já vem com algumas tarefas."),
-          h("div", null, demo)),
-        form,
-        h("p", { class: "auth__note" }, isLogin ? "Ainda não tem conta? " : "Já tem conta? ",
-          h("button", { class: "link", type: "button", onclick: () => renderAuth(isLogin ? "register" : "login") }, isLogin ? "Criar uma" : "Entrar"))),
+          demo,
+          h("p", { class: "auth__note" }, "Acesso imediato, sem cadastro, a uma conta de exemplo com tarefas no quadro, prazos e etiquetas.")),
+        isLogin && h("div", { class: "auth__or" }, h("span", null, "ou entre com a sua conta")),
+        form),
       h("p", { class: "auth__foot" }, "Feito por Luis Gustavo Prata. É também uma API REST: ", h("a", { href: "/docs" }, "documentação"), ".")),
     h("section", { class: "auth__right", "aria-label": "Como funciona" },
       h("p", null, "Tudo o que precisa ser feito num quadro só: o que falta começar, o que está andando e o que já foi. O mais urgente aparece em vermelho."),
